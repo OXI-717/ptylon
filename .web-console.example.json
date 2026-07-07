@@ -1,0 +1,28 @@
+{
+  "recipes": [
+    {
+      "id": "project-shells",
+      "name": "Project Shells",
+      "description": "Two terminals opened in the project directory",
+      "layout": "hsplit3",
+      "tabs": [
+        {
+          "type": "terminal",
+          "name": "app",
+          "cwd": "/workspace/web-console",
+          "command": "pnpm dev"
+        },
+        {
+          "type": "terminal",
+          "name": "shell",
+          "cwd": "/workspace/web-console"
+        },
+        {
+          "type": "browser",
+          "name": "preview",
+          "url": "http://127.0.0.1:8790"
+        }
+      ]
+    }
+  ]
+}

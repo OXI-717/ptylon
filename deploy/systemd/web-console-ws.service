@@ -1,0 +1,19 @@
+[Unit]
+Description=Web Console - WebSocket Gateway
+After=network.target web-console-pty.service
+Requires=web-console-pty.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/web-console
+EnvironmentFile=/opt/web-console/.env
+ExecStart=/usr/bin/node server/ws-server.mjs
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

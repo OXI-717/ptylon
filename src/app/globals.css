@@ -1,0 +1,188 @@
+@import "tailwindcss";
+@import "@xterm/xterm/css/xterm.css";
+
+/* Circadian display theme: light/day, warm evening, low-blue night. */
+:root {
+  --background: #0a0e14;
+  --foreground: #e0e0e0;
+  --accent: #40E0D0;
+  --surface: #0d1117;
+  --surface-raised: #111722;
+  --border: #1a1e24;
+  --muted: #8a95a6;
+  --muted-strong: #c8d2e2;
+  --terminal-bg: #0a0e14;
+  --terminal-fg: #e0e0e0;
+  --terminal-cursor: #40E0D0;
+  --terminal-selection: #40E0D040;
+  --ansi-black: #1a1e24;
+  --ansi-red: #ff6b6b;
+  --ansi-green: #69db7c;
+  --ansi-yellow: #ffd43b;
+  --ansi-blue: #74c0fc;
+  --ansi-magenta: #da77f2;
+  --ansi-cyan: #40E0D0;
+  --ansi-white: #e0e0e0;
+  --ansi-bright-black: #495057;
+  --ansi-bright-red: #ff8787;
+  --ansi-bright-green: #8ce99a;
+  --ansi-bright-yellow: #ffe066;
+  --ansi-bright-blue: #a5d8ff;
+  --ansi-bright-magenta: #e599f7;
+  --ansi-bright-cyan: #63e6be;
+  --ansi-bright-white: #ffffff;
+  --warm-filter-color: #ffd29a;
+  --warm-filter-opacity: 0;
+  --blue-reduction: 1;
+  color-scheme: dark;
+  transition: background-color 30s, color 30s, border-color 30s, filter 30s;
+}
+:root[data-circadian-phase="dawn"] {
+  --background: #fff8ed; --foreground: #21160d; --accent: #b45309;
+  --terminal-bg: #fff8ed; --terminal-fg: #21160d; --terminal-cursor: #b45309;
+  --terminal-selection: #f59e0b40; --surface: #f7ead6; --surface-raised: #fffdf8; --border: #e8cda8;
+  --muted: #806a55; --muted-strong: #3c2a1c; --warm-filter-opacity: 0.08; --blue-reduction: 0.96;
+  color-scheme: light;
+}
+:root[data-circadian-phase="morning"] {
+  --background: #ffffff; --foreground: #101419; --accent: #0066cc;
+  --terminal-bg: #ffffff; --terminal-fg: #101419; --terminal-cursor: #0066cc;
+  --terminal-selection: #0066cc30; --surface: #f3f5f7; --surface-raised: #ffffff; --border: #d9dee5;
+  --muted: #697386; --muted-strong: #27313f; --warm-filter-opacity: 0; --blue-reduction: 1;
+  color-scheme: light;
+}
+:root[data-circadian-phase="day"] {
+  --background: #ffffff; --foreground: #101419; --accent: #0066cc;
+  --terminal-bg: #ffffff; --terminal-fg: #101419; --terminal-cursor: #0066cc;
+  --terminal-selection: #0066cc30; --surface: #f3f5f7; --surface-raised: #ffffff; --border: #d9dee5;
+  --muted: #697386; --muted-strong: #27313f; --warm-filter-opacity: 0; --blue-reduction: 1;
+  color-scheme: light;
+}
+:root[data-circadian-phase="evening"] {
+  --background: #fff7df; --foreground: #20160c; --accent: #c26a00;
+  --terminal-bg: #fff7df; --terminal-fg: #20160c; --terminal-cursor: #c26a00;
+  --terminal-selection: #f59e0b45; --surface: #f4e5c4; --surface-raised: #fffaf0; --border: #dfbd83;
+  --muted: #826949; --muted-strong: #3c2b18; --warm-filter-opacity: 0.17; --blue-reduction: 0.9;
+  color-scheme: light;
+}
+:root[data-circadian-phase="night"] {
+  --background: #0e1115; --foreground: #e6d8c3; --accent: #f0a45d;
+  --terminal-bg: #090b0f; --terminal-fg: #e6d8c3; --terminal-cursor: #f0a45d;
+  --terminal-selection: #f0a45d40; --surface: #171719; --surface-raised: #202022; --border: #342d24;
+  --muted: #9d8f7e; --muted-strong: #ead8bd; --warm-filter-opacity: 0.16; --blue-reduction: 0.78;
+  color-scheme: dark;
+}
+:root[data-circadian-phase="late"] {
+  --background: #08090c; --foreground: #dacbb4; --accent: #e89952;
+  --terminal-bg: #05070a; --terminal-fg: #dacbb4; --terminal-cursor: #e89952;
+  --terminal-selection: #e8995240; --surface: #121316; --surface-raised: #1a1a1d; --border: #2c261e;
+  --muted: #958876; --muted-strong: #e3d0b4; --warm-filter-opacity: 0.21; --blue-reduction: 0.72;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-mono), 'JetBrains Mono', 'Fira Code', monospace;
+  overflow: hidden;
+  filter: saturate(var(--blue-reduction));
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  background: var(--warm-filter-color);
+  opacity: var(--warm-filter-opacity);
+  mix-blend-mode: multiply;
+}
+
+/* Hide scrollbar in tab bar */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile: hide sidebar, single pane, touch-friendly tabs */
+@media (max-width: 768px) {
+  /* Force sidebar closed on mobile — toggle still works */
+  .sidebar-mobile-hidden {
+    display: none !important;
+  }
+  /* Tab bar: smaller, scrollable */
+  .tab-bar-mobile {
+    height: 2.25rem;
+  }
+  /* Status bar: compact */
+  .status-bar-mobile {
+    font-size: 0.625rem;
+    gap: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  /* Split pane headers: touch-friendly */
+  .split-header-mobile button {
+    min-width: 2rem;
+    min-height: 2rem;
+  }
+}
+
+/* Tablet: narrower sidebar */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar-tablet {
+    width: 10rem !important;
+  }
+}
+
+/* Safe area for notched phones */
+@supports (padding-top: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Touch: prevent double-tap zoom on buttons */
+button, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* xterm.js overrides */
+.xterm {
+  padding: 4px;
+  background: var(--terminal-bg);
+}
+.xterm-viewport,
+.xterm-screen {
+  background: var(--terminal-bg) !important;
+}
+/* Hide accessibility tree selection highlight — prevents blue bar during selection */
+.xterm .xterm-accessibility-tree {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.xterm .xterm-accessibility-tree *::selection {
+  background: transparent !important;
+  color: transparent !important;
+}
+.xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}

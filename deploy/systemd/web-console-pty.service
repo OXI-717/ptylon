@@ -1,0 +1,18 @@
+[Unit]
+Description=Web Console - PTY Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/web-console
+EnvironmentFile=/opt/web-console/.env
+ExecStart=/usr/bin/node server/pty-daemon.mjs
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

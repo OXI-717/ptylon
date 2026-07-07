@@ -1,0 +1,20 @@
+[Unit]
+Description=Web Console - Next.js App
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/web-console
+EnvironmentFile=/opt/web-console/.env
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=on-failure
+RestartSec=5
+Environment=PORT=8790
+Environment=HOSTNAME=0.0.0.0
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

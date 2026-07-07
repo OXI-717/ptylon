@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from 'next/server';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { verifyToken } from '@/lib/auth';
+import { resolveSafePath } from '@/lib/fs-security';
+import { UPLOAD_DIR } from '@/lib/server-config';
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
+
+function sanitizeFileName(name: string): string {
+  return name.replace(/[\/\\]/g, '_').replace(/[^\w.\- ]/g, '_');
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const token = req.cookies.get('wc-token')?.value;
+    if (!token || !verifyToken(token)) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const form = await req.formData();
+    const targetDirRaw = (form.get('targetDir') as string) || UPLOAD_DIR;
+    const targetDir = resolveSafePath(targetDirRaw);
+    await fs.mkdir(targetDir, { recursive: true });
+
+    const entries = form.getAll('files');
+    if (!entries.length) return NextResponse.json({ ok: false, error: 'No files' }, { status: 400 });
+
+    const saved: { name: string; path: string; size: number }[] = [];
+
+    for (const item of entries) {
+      if (!(item instanceof File)) continue;
+      if (item.size > MAX_FILE_SIZE) {
+        return NextResponse.json({ ok: false, error: `File ${item.name} exceeds 50MB limit` }, { status: 413 });
+      }
+      const safeName = sanitizeFileName(item.name || 'file.bin');
+      const fullPath = resolveSafePath(path.join(targetDir, safeName));
+      const bytes = Buffer.from(await item.arrayBuffer());
+      await fs.writeFile(fullPath, bytes);
+      saved.push({ name: safeName, path: fullPath, size: bytes.length });
+    }
+
+    return NextResponse.json({ ok: true, files: saved });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Upload failed' }, { status: 500 });
+  }
+}
