@@ -6,6 +6,7 @@
 
 - Added dedicated browser regression coverage for terminal click-to-cursor.
 - Added OSS release files: `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, and GitHub Actions CI.
+- Published the project from clean public release history (`42b7ff2`) with MIT licensing.
 
 ### Fixed
 
@@ -141,4 +142,4 @@
 ### Still Open
 
 - PTY daemon restart and host reboot do not preserve live shell processes.
-- Public visibility still needs live secret rotation, clean release-history preparation, and remote branch cleanup.
+- Headed/VNC/WebRTC browser mode and cross-device theme sync remain separate feature phases.

@@ -287,10 +287,10 @@ The `/api/admin/*` control plane is for localhost scripts and agents only. Keep 
 
 ### Public Release
 
-Before making the repo public:
+Public release baseline:
 
-- Rotate any secrets that ever existed in local `.env`.
+- Repository visibility is public from clean release commit `42b7ff2`.
 - Keep HEAD secret/internal-reference scans clean.
-- Publish from a clean squash/orphan release commit or otherwise remove dirty history; old commits include private paths and personal author metadata.
-- Delete non-release remote branches before the visibility flip.
-- Re-run fresh clone install/build/run from the pushed release branch.
+- Keep `.env`, databases, uploads, runtime browser profiles, and local deployment paths out of git.
+- Rotate any real local `.env` secrets before publishing forks, support bundles, or new release-history rewrites.
+- Re-run fresh clone install/build/run before future public release tags.

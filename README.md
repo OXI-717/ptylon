@@ -229,4 +229,4 @@ Some sites detect headless Chrome or datacenter/server IPs. Anti-bot flows such 
 - PTY scrollback is in memory.
 - Server-side browser panels can be blocked by headless-browser or IP reputation checks even when normal pages and local previews work.
 - Click-to-cursor across wrapped input lines is covered by `pnpm test:browser-regression`; keep that browser smoke passing before changing terminal input handling.
-- Before making the repository public, rotate any real secrets used in local `.env`, publish from clean release history, and delete non-release remote branches.
+- For private forks or self-hosted deployments, rotate any real `.env` secrets before publishing a fork or support bundle.
