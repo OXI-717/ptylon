@@ -54,6 +54,13 @@ export interface SessionMetadata {
   updatedAt: number;
 }
 
+export interface ThemeSettings {
+  mode?: 'auto' | 'day' | 'evening' | 'night' | 'system';
+  paletteId?: string;
+  customPalettes?: unknown[];
+  updatedAt?: number;
+}
+
 // Persisted workspace state (survives browser close)
 interface PersistedState {
   tabs: Tab[];
@@ -63,6 +70,7 @@ interface PersistedState {
   activeWorkspaceId: string | null;
   sidebarOpen: boolean;
   notifications?: WorkspaceNotification[];
+  themeSettings?: ThemeSettings;
   _version?: number;
   _savedAt?: number;
 }
@@ -144,6 +152,11 @@ function saveToServer(payload: Record<string, unknown>) {
       body: JSON.stringify(payload),
     }).catch(() => { /* offline — localStorage still has it */ });
   }, 2000); // 2s debounce for server (localStorage is 500ms)
+}
+
+function dispatchWorkspaceSync(state: Partial<PersistedState>) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('web-console-workspace-sync', { detail: { state } }));
 }
 
 // Load from server — called after auth, merges with localStorage
@@ -517,6 +530,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
         sidebarOpen: serverState.sidebarOpen ?? false,
         notifications,
       });
+      dispatchWorkspaceSync(serverState);
     },
 
     // WebSocket
@@ -530,3 +544,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     setTheme: (theme) => set({ theme }),
   };
 });
+
+export function saveThemeSettings(themeSettings: ThemeSettings) {
+  const state = useWorkspaceStore.getState();
+  savePersistedState({
+    tabs: state.tabs,
+    activeTabId: state.activeTabId,
+    splitTree: state.splitTree,
+    workspaces: state.workspaces,
+    activeWorkspaceId: state.activeWorkspaceId,
+    sidebarOpen: state.sidebarOpen,
+    notifications: state.notifications,
+    themeSettings,
+  });
+}

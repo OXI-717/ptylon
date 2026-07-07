@@ -132,8 +132,9 @@ export default function Home() {
           notifications, addNotification, markNotificationsReadForTab,
           sessionMetadata, setSessionMetadata } = useWorkspaceStore();
   const [checking, setChecking] = useState(true);
+  const [serverSynced, setServerSynced] = useState(false);
   const [wsReconnectKey, setWsReconnectKey] = useState(0);
-  const circadian = useCircadianTheme();
+  const circadian = useCircadianTheme(authenticated && serverSynced);
   const [editorFiles, setEditorFiles] = useState<Record<string, { content: string; dirty: boolean }>>({});
   const editorRestored = useRef<Set<string>>(new Set());
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
@@ -152,6 +153,7 @@ export default function Home() {
           setAuth(true, data.wsToken);
           // Load state from server (cross-device sync)
           await useWorkspaceStore.getState().syncFromServer();
+          setServerSynced(true);
         }
       })
       .catch(() => {})

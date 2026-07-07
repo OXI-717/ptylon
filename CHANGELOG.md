@@ -7,12 +7,14 @@
 - Added dedicated browser regression coverage for terminal click-to-cursor.
 - Added OSS release files: `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, and GitHub Actions CI.
 - Published the project from clean public release history (`42b7ff2`) with MIT licensing.
+- Synced theme mode, selected palette, and imported custom palettes through server-side workspace state.
 
 ### Fixed
 
 - Browser regression now dismisses onboarding before real pointer-event checks.
 - Terminal click-to-cursor now falls back to viewport-derived cell dimensions when xterm private render dimensions are unavailable.
 - Public examples no longer hardcode a personal deployment path.
+- Browser regression now verifies that Theme Gallery changes persist to server workspace state.
 
 ### Verified
 

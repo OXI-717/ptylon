@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BUILT_IN_THEME_PALETTES,
   CIRCADIAN_PALETTE_ID,
@@ -7,6 +7,7 @@ import {
   sanitizeThemeId,
   type ThemePalette,
 } from '@/lib/theme-palettes';
+import { saveThemeSettings, type ThemeSettings } from '@/stores/workspace-store';
 
 export type CircadianPhase = 'dawn' | 'morning' | 'day' | 'evening' | 'night' | 'late';
 export type CircadianMode = 'auto' | 'day' | 'evening' | 'night' | 'system';
@@ -109,6 +110,10 @@ function saveCustomPalettes(palettes: ThemePalette[]) {
   localStorage.setItem(CUSTOM_PALETTES_STORAGE_KEY, JSON.stringify(palettes));
 }
 
+function isCircadianMode(value: unknown): value is CircadianMode {
+  return value === 'auto' || value === 'day' || value === 'evening' || value === 'night' || value === 'system';
+}
+
 function applyPaletteVariables(palette: ThemePalette | null) {
   const root = document.documentElement;
   if (!palette) {
@@ -122,13 +127,14 @@ function applyPaletteVariables(palette: ThemePalette | null) {
   }
 }
 
-export function useCircadianTheme(): CircadianTheme {
+export function useCircadianTheme(syncEnabled = false): CircadianTheme {
   const [autoPhase, setAutoPhase] = useState<CircadianPhase>(() => getPhaseAtTime());
   const [mode, setModeState] = useState<CircadianMode>(() => readInitialMode());
   const [systemIsDark, setSystemIsDark] = useState(() => getSystemIsDark());
   const [paletteId, setPaletteIdState] = useState(() => readInitialPaletteId());
   const [previewPaletteId, setPreviewPaletteId] = useState<string | null>(null);
   const [customPalettes, setCustomPalettes] = useState<ThemePalette[]>(() => readCustomPalettes());
+  const applyingRemoteRef = useRef(false);
   const currentPhase = phaseForMode(mode, autoPhase, systemIsDark);
   const palettes = [...BUILT_IN_THEME_PALETTES, ...customPalettes];
   const effectivePaletteId = previewPaletteId || paletteId;
@@ -139,6 +145,45 @@ export function useCircadianTheme(): CircadianTheme {
   const updatePhase = useCallback(() => {
     setAutoPhase(getPhaseAtTime());
   }, []);
+
+  const applySyncedTheme = useCallback((settings: ThemeSettings | undefined) => {
+    if (!settings) return;
+    applyingRemoteRef.current = true;
+    try {
+      if (isCircadianMode(settings.mode)) {
+        setModeState(settings.mode);
+        localStorage.setItem(MODE_STORAGE_KEY, settings.mode);
+        localStorage.removeItem(LEGACY_OVERRIDE_KEY);
+      }
+
+      const syncedPalettes = Array.isArray(settings.customPalettes)
+        ? settings.customPalettes.map(normalizeThemePalette).filter(Boolean) as ThemePalette[]
+        : null;
+      if (syncedPalettes) {
+        const next = syncedPalettes.slice(-12);
+        setCustomPalettes(next);
+        saveCustomPalettes(next);
+      }
+
+      if (typeof settings.paletteId === 'string') {
+        const normalized = settings.paletteId === CIRCADIAN_PALETTE_ID ? CIRCADIAN_PALETTE_ID : sanitizeThemeId(settings.paletteId);
+        setPreviewPaletteId(null);
+        setPaletteIdState(normalized);
+        localStorage.setItem(PALETTE_STORAGE_KEY, normalized);
+      }
+    } finally {
+      window.setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onWorkspaceSync = (event: Event) => {
+      const state = (event as CustomEvent<{ state?: { themeSettings?: ThemeSettings } }>).detail?.state;
+      applySyncedTheme(state?.themeSettings);
+    };
+    window.addEventListener('web-console-workspace-sync', onWorkspaceSync);
+    return () => window.removeEventListener('web-console-workspace-sync', onWorkspaceSync);
+  }, [applySyncedTheme]);
 
   useEffect(() => {
     const query = window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -197,6 +242,16 @@ export function useCircadianTheme(): CircadianTheme {
     setPalette(safePalette.id);
     return safePalette;
   }, [setPalette]);
+
+  useEffect(() => {
+    if (!syncEnabled || applyingRemoteRef.current) return;
+    saveThemeSettings({
+      mode,
+      paletteId,
+      customPalettes,
+      updatedAt: Date.now(),
+    });
+  }, [customPalettes, mode, paletteId, syncEnabled]);
 
   return {
     phase: currentPhase,

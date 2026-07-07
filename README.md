@@ -125,7 +125,7 @@ pnpm test:browser-regression
 
 `pnpm test:pty-gateway` starts a temporary PTY daemon and gateway, creates a shell, restarts only the gateway, reattaches to the original session, and verifies scrollback/output still works.
 
-`pnpm test:browser-regression` drives a headless Chrome against a running Web Console instance. It verifies manual auth, terminal creation, terminal connection, terminal input echo, click-to-cursor arrow input, live session metadata, OSC notifications, recipes, mobile-reachable workspace actions, theme gallery apply/reset, server-side browser panel rendering, visible browser click/type input, and shared UI/admin browser sessions. By default it targets `http://127.0.0.1:8790` and `ws://127.0.0.1:8791`, and reads `AUTH_PASSWORD` from `.env`; override with `WC_BASE_URL`, `WC_WS_URL`, `WC_AUTH_PASSWORD`, `WC_ADMIN_TOKEN`, `CHROME`, or `WC_REGRESSION_OUT`.
+`pnpm test:browser-regression` drives a headless Chrome against a running Web Console instance. It verifies manual auth, terminal creation, terminal connection, terminal input echo, click-to-cursor arrow input, live session metadata, OSC notifications, recipes, mobile-reachable workspace actions, theme gallery apply/reset with server-side theme sync, server-side browser panel rendering, visible browser click/type input, and shared UI/admin browser sessions. By default it targets `http://127.0.0.1:8790` and `ws://127.0.0.1:8791`, and reads `AUTH_PASSWORD` from `.env`; override with `WC_BASE_URL`, `WC_WS_URL`, `WC_AUTH_PASSWORD`, `WC_ADMIN_TOKEN`, `CHROME`, or `WC_REGRESSION_OUT`.
 
 The browser regression also verifies live terminal attention notifications. A process can raise an unread badge with OSC 777:
 
@@ -221,6 +221,7 @@ Some sites detect headless Chrome or datacenter/server IPs. Anti-bot flows such 
 - Server-side browser panels run under `web-console.service`, not `web-console-ws.service` or `web-console-pty.service`.
 - Admin browser automation runs server-side Chrome sessions with a TTL (`WEB_CONSOLE_BROWSER_SESSION_TTL_MS`, default 10 minutes). It is for local scripts/agents, not public exposure.
 - The richer workspace state wins during local/server merge, preventing old server snapshots from overwriting a multi-workspace browser layout.
+- Theme mode, selected palette, and imported custom palettes sync through the same server-side workspace state after login/refresh.
 - `.env` is intentionally gitignored. Commit `.env.example`, never real secrets.
 
 ## Current Limitations

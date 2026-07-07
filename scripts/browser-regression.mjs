@@ -490,10 +490,12 @@ async function main() {
     await waitFor(cdp, page, `document.body.innerText.includes('Theme Gallery') && Boolean(document.querySelector('[data-theme-palette-option="paper-trail"]'))`, 'theme gallery opened');
     await evalJs(cdp, page, `document.querySelector('[data-theme-palette-option="paper-trail"]').click()`);
     await waitFor(cdp, page, `document.documentElement.getAttribute('data-theme-palette') === 'paper-trail' && localStorage.getItem('circadian-theme-palette') === 'paper-trail'`, 'theme palette applied');
+    await waitFor(cdp, page, `fetch('/api/workspace').then((r) => r.json()).then((data) => data.state?.themeSettings?.paletteId === 'paper-trail').catch(() => false)`, 'theme palette synced to server state');
     await evalJs(cdp, page, `document.querySelector('[data-theme-palette-option="circadian"]').click()`);
     await waitFor(cdp, page, `document.documentElement.getAttribute('data-theme-palette') === 'circadian' && localStorage.getItem('circadian-theme-palette') === 'circadian'`, 'theme palette reset');
+    await waitFor(cdp, page, `fetch('/api/workspace').then((r) => r.json()).then((data) => data.state?.themeSettings?.paletteId === 'circadian').catch(() => false)`, 'theme palette reset synced to server state');
     await evalJs(cdp, page, `Array.from(document.querySelectorAll('button')).find((candidate) => candidate.innerText.trim() === 'close')?.click()`);
-    report.checks.push('theme gallery applies and resets curated palette');
+    report.checks.push('theme gallery applies, syncs, and resets curated palette');
 
     const adminNoticeTitle = `WC_ADMIN_${Date.now()}`;
     const adminNotify = await evalJs(cdp, page, `
