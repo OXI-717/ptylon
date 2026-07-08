@@ -17,6 +17,7 @@
 - Browser regression now verifies that Theme Gallery changes persist to server workspace state.
 - Workspace autosave no longer drops saved theme settings from server workspace state.
 - The footer `auto` theme button now resets fixed/custom palettes back to the circadian auto palette.
+- Manual password login now enables server theme sync immediately after loading workspace state.
 
 ### Verified
 

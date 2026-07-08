@@ -6,7 +6,11 @@ import { useWorkspaceStore } from '@/stores/workspace-store';
 const APP_LABEL = process.env.NEXT_PUBLIC_APP_LABEL || 'Web Console';
 const BUILD_MARKER = 'cloudfarm-dns-only-20260612';
 
-export default function LoginPage() {
+interface LoginPageProps {
+  onServerSynced?: () => void;
+}
+
+export default function LoginPage({ onServerSynced }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,6 +36,7 @@ export default function LoginPage() {
         if (data.authenticated) {
           await syncFromServer();
           setAuth(true, data.wsToken);
+          onServerSynced?.();
         }
       } else {
         setError('Wrong password');

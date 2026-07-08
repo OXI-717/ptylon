@@ -675,7 +675,7 @@ export default function Home() {
     );
   }
 
-  if (!authenticated) return <LoginPage />;
+  if (!authenticated) return <LoginPage onServerSynced={() => setServerSynced(true)} />;
 
   const activeLeaf = activeLeafId && splitTree ? findLeafById(splitTree, activeLeafId) : null;
   const activeTab = activeLeaf?.tabId
