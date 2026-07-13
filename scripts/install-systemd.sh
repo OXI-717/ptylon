@@ -32,7 +32,11 @@ if [[ ${EUID} -ne 0 ]]; then
 fi
 
 SOURCE_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-command -v pnpm >/dev/null || { echo 'pnpm is required.' >&2; exit 1; }
+if ! command -v pnpm >/dev/null; then
+  command -v corepack >/dev/null || { echo 'pnpm is required and Corepack is unavailable.' >&2; exit 1; }
+  corepack enable
+  corepack prepare pnpm@11.6.0 --activate
+fi
 command -v openssl >/dev/null || { echo 'openssl is required.' >&2; exit 1; }
 
 id -u "$SERVICE_USER" >/dev/null 2>&1 || \
