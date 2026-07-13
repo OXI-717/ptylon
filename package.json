@@ -15,6 +15,7 @@
     "start:pty": "node --env-file=.env server/pty-daemon.mjs",
     "test:pty-gateway": "node scripts/smoke-pty-gateway.mjs",
     "test:browser-regression": "node scripts/browser-regression.mjs",
+    "test:playwright-smoke": "node scripts/playwright-smoke.mjs",
     "webc": "node bin/webc.mjs",
     "lint": "eslint"
   },
@@ -44,6 +45,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "playwright": "1.57.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

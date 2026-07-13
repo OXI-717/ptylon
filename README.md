@@ -159,6 +159,8 @@ pnpm test:browser-regression
 
 `pnpm test:browser-regression` drives a headless Chrome against a running Web Console instance. It verifies manual auth, terminal creation, terminal connection, terminal input echo, click-to-cursor arrow input, live session metadata, OSC notifications, recipes, mobile-reachable workspace actions, theme gallery apply/reset with server-side theme sync, server-side browser panel rendering, visible browser click/type input, and shared UI/admin browser sessions. By default it targets `http://127.0.0.1:8790` and `ws://127.0.0.1:8791`, and reads `AUTH_PASSWORD` from `.env`; override with `WC_BASE_URL`, `WC_WS_URL`, `WC_AUTH_PASSWORD`, `WC_ADMIN_TOKEN`, `CHROME`, or `WC_REGRESSION_OUT`.
 
+`pnpm test:playwright-smoke` is a smaller browser proof: it verifies application login, a visible `Connected` terminal state, and a browser WebSocket attach. To validate a reverse proxy protected with HTTP Basic Auth, run it with `WC_BASE_URL=https://console.example.com WC_BASIC_USER=... WC_BASIC_PASS=... pnpm test:playwright-smoke`. Keep those credentials outside the repository.
+
 The browser regression also verifies live terminal attention notifications. A process can raise an unread badge with OSC 777:
 
 ```bash
