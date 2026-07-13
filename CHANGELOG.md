@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0 — 2026-07-13
+
+First stable public release of Ptylon.
+
+### Highlights
+
+- Persistent raw `node-pty` sessions behind a restartable authenticated
+  WebSocket gateway.
+- Browser-native workspaces with split terminals, files, editing, recipes,
+  server-side browser panels, mobile support, and themes.
+- Self-hosted deployment through systemd or Docker Compose; Docker services run
+  unprivileged, keep the PTY daemon on a private network, and persist workspace
+  and SQLite state in named volumes.
+- Verified clean install, lint, build, PTY gateway survival, browser
+  regression, dependency audit, and a complete Docker Compose smoke test in CI.
+
 ## 2026-07-13
 
 ### Security
