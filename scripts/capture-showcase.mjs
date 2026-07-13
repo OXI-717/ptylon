@@ -55,7 +55,7 @@ async function main() {
     await openWorkspace(page);
     await prepareTerminalScreenshot(page);
     await page.locator('.xterm textarea').last().focus();
-    await page.keyboard.type('printf "Web Console — persistent shells, browser tools, and focused workspaces"');
+    await page.keyboard.type('printf "Persistent shells. Focused workspaces."');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(600);
     await page.screenshot({ path: resolve(OUT_DIR, 'web-console-workspace.png'), fullPage: true });

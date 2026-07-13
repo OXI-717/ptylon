@@ -1,8 +1,47 @@
 # Web Console
 
-Browser terminal workspace: xterm.js terminals, server-rendered browser tabs, split panes, workspaces, file manager, Monaco editor, drag-and-drop uploads, voice input, circadian display theme, and a theme gallery.
+> A self-hosted, browser-native terminal workspace for focused remote work.
 
-The production architecture keeps shell processes outside the browser WebSocket gateway. A long-lived PTY daemon owns `node-pty` sessions; the authenticated WebSocket gateway only proxies terminal I/O. This lets the gateway restart without killing running shells.
+[![CI](https://github.com/alexfrmn/web-console/actions/workflows/ci.yml/badge.svg)](https://github.com/alexfrmn/web-console/actions/workflows/ci.yml)
+[![Node.js 22+](https://img.shields.io/badge/node-22%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+![Web Console workspace with persistent terminal panes](docs/images/web-console-workspace.png)
+
+**Web Console** brings persistent terminals, browser tools, files, editing, and
+workspaces into one browser tab. It is designed for a server you control—not a
+hosted shell service.
+
+| [Quick start](#quick-start) | [Screenshots](#screenshots) | [Architecture](#architecture) | [Production](#production-with-systemd) | [Contributing](CONTRIBUTING.md) |
+| --- | --- | --- | --- |
+
+## Why Web Console
+
+- **Keep the shell alive.** A dedicated PTY daemon owns `node-pty` sessions, so a
+  WebSocket gateway restart does not terminate running shells.
+- **Work in context.** Split panes, named workspaces, file management, Monaco
+  editing, and server-rendered browser tabs stay together.
+- **Run it yourself.** The repository includes a guarded systemd installer,
+  reverse-proxy guidance, a production smoke check, and an explicit security
+  boundary around the server workspace.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/web-console-theme-gallery.png" alt="Web Console theme gallery" width="49%" />
+  <img src="docs/images/web-console-mobile.png" alt="Web Console responsive mobile layout" width="29%" />
+</p>
+
+Browser terminal workspace: xterm.js terminals, server-rendered browser tabs,
+split panes, workspaces, file manager, Monaco editor, drag-and-drop uploads,
+voice input, circadian display theme, and a theme gallery.
+
+The production architecture keeps shell processes outside the browser WebSocket
+gateway. A long-lived PTY daemon owns `node-pty` sessions; the authenticated
+WebSocket gateway only proxies terminal I/O. This lets the gateway restart
+without killing running shells.
+
+## At a Glance
 
 ## Architecture
 
@@ -34,7 +73,7 @@ web-console-pty.service  localhost-only PTY daemon, port 8792
 - Linux with PTY support
 - Build tools needed by `node-pty`
 
-## First Run
+## Quick Start
 
 ```bash
 cp .env.example .env

@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible problem in Web Console
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for helping improve Web Console. Do not include passwords, tokens, private hostnames, or terminal output containing secrets."
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Include the expected result and the actual result.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start …
+        2. Open …
+        3. Observe …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Web Console version or commit
+      placeholder: v0.1.0 or abc1234
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node.js version, browser, and deployment method. Redact private infrastructure details.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Please redact secrets and personal data before attaching anything.
