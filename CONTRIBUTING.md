@@ -13,7 +13,7 @@ pnpm build
 pnpm test:pty-gateway
 ```
 
-`pnpm test:browser-regression` requires a running Web Console instance,
+`pnpm test:browser-regression` requires a running Ptylon instance,
 Chrome, and local `.env` credentials.
 
 ## Pull Requests

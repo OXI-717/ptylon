@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 
-const APP_LABEL = process.env.NEXT_PUBLIC_APP_LABEL || 'Web Console';
+const APP_LABEL = process.env.NEXT_PUBLIC_APP_LABEL || 'Ptylon';
 const BUILD_MARKER = 'cloudfarm-dns-only-20260612';
 
 interface LoginPageProps {
@@ -57,7 +57,7 @@ export default function LoginPage({ onServerSynced }: LoginPageProps) {
       >
         <div className="text-center mb-8">
           <div className="text-4xl mb-2 font-mono text-[#40E0D0]">⬡</div>
-          <h1 className="text-xl font-mono text-white">Web Console</h1>
+          <h1 className="text-xl font-mono text-white">Ptylon</h1>
           <p className="text-sm text-gray-500 font-mono mt-1">{APP_LABEL}</p>
         </div>
 

@@ -1,5 +1,5 @@
 name: Feature request
-description: Propose an improvement to Web Console
+description: Propose an improvement to Ptylon
 labels: [enhancement]
 body:
   - type: textarea

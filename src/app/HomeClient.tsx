@@ -31,7 +31,7 @@ const THEME_LABELS: Record<CircadianMode, string> = {
 };
 const THEME_MODES: CircadianMode[] = ['auto', 'day', 'evening', 'night', 'system'];
 const DEFAULT_WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '8791';
-const APP_LABEL = process.env.NEXT_PUBLIC_APP_LABEL || 'Web Console';
+const APP_LABEL = process.env.NEXT_PUBLIC_APP_LABEL || 'Ptylon';
 
 // --- Tree helpers ---
 
@@ -229,7 +229,7 @@ export default function Home() {
               tabId,
               workspaceId: state.activeWorkspaceId,
               protocol: 'osc9',
-              title: String(msg.title || 'Web Console'),
+              title: String(msg.title || 'Ptylon'),
               body: typeof msg.body === 'string' ? msg.body : undefined,
             });
           }

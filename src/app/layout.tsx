@@ -8,7 +8,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Web Console",
+  title: "Ptylon — Browser Terminal Workspace",
   description: "Browser-based terminal workspace",
   manifest: "/manifest.json",
   appleWebApp: {

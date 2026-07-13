@@ -1,7 +1,7 @@
 # Showcase assets
 
-The screenshots in this directory are captured from a real, isolated Web
-Console instance. They are not mockups.
+The screenshots in this directory are captured from a real, isolated Ptylon
+instance. They are not mockups.
 
 ## Reproduce
 

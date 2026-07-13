@@ -15,7 +15,7 @@ a private contact channel without including exploit details.
 
 ## Deployment Notes
 
-Web Console is a self-hosted terminal and browser workspace. Treat it as a
+Ptylon is a self-hosted terminal and browser workspace. Treat it as a
 privileged internal service:
 
 - Keep the app behind HTTPS and an external access gate when exposed beyond

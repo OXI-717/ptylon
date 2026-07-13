@@ -1,21 +1,21 @@
-# Web Console
+# Ptylon
 
-> A self-hosted, browser-native terminal workspace for focused remote work.
+> A self-hosted, browser-native terminal workspace — Termius in a browser tab.
 
 [![CI](https://github.com/alexfrmn/web-console/actions/workflows/ci.yml/badge.svg)](https://github.com/alexfrmn/web-console/actions/workflows/ci.yml)
 [![Node.js 22+](https://img.shields.io/badge/node-22%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![Web Console workspace with persistent terminal panes](docs/images/web-console-workspace.png)
+![Ptylon workspace with persistent terminal panes](docs/images/web-console-workspace.png)
 
-**Web Console** brings persistent terminals, browser tools, files, editing, and
+**Ptylon** brings persistent terminals, browser tools, files, editing, and
 workspaces into one browser tab. It is designed for a server you control—not a
 hosted shell service.
 
 | [Quick start](#quick-start) | [Screenshots](#screenshots) | [Architecture](#architecture) | [Production](#production-with-systemd) | [Contributing](CONTRIBUTING.md) |
 | --- | --- | --- | --- |
 
-## Why Web Console
+## Why Ptylon
 
 - **Keep the shell alive.** A dedicated PTY daemon owns `node-pty` sessions, so a
   WebSocket gateway restart does not terminate running shells.
@@ -28,8 +28,8 @@ hosted shell service.
 ## Screenshots
 
 <p align="center">
-  <img src="docs/images/web-console-theme-gallery.png" alt="Web Console theme gallery" width="49%" />
-  <img src="docs/images/web-console-mobile.png" alt="Web Console responsive mobile layout" width="29%" />
+  <img src="docs/images/web-console-theme-gallery.png" alt="Ptylon theme gallery" width="49%" />
+  <img src="docs/images/web-console-mobile.png" alt="Ptylon responsive mobile layout" width="29%" />
 </p>
 
 Browser terminal workspace: xterm.js terminals, server-rendered browser tabs,
@@ -106,7 +106,7 @@ ALLOWED_CWD_ROOT=/workspace
 UPLOAD_DIR=/workspace/uploads
 NEXT_PUBLIC_WORKSPACE_ROOT=/workspace
 NEXT_PUBLIC_UPLOAD_DIR=/workspace/uploads
-NEXT_PUBLIC_APP_LABEL=Web Console
+NEXT_PUBLIC_APP_LABEL=Ptylon
 # Optional for server-side browser panels and admin browser automation:
 # CHROME=/usr/bin/google-chrome
 # WEB_CONSOLE_BROWSER_SESSION_TTL_MS=600000
