@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">Ptylon</title>
+  <desc id="desc">A self-hosted browser terminal workspace</desc>
+  <rect width="1280" height="640" fill="#0b0f11"/>
+  <rect x="48" y="48" width="1184" height="544" rx="24" fill="#12191c" stroke="#e6a15f" stroke-width="3"/>
+  <circle cx="112" cy="112" r="10" fill="#55d6ca"/>
+  <circle cx="146" cy="112" r="10" fill="#e6a15f"/>
+  <circle cx="180" cy="112" r="10" fill="#75c77a"/>
+  <text x="96" y="238" fill="#f7ead8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="84" font-weight="700">Ptylon</text>
+  <text x="100" y="312" fill="#aeb8b5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="32">Self-hosted browser terminal workspace</text>
+  <line x1="96" y1="374" x2="1184" y2="374" stroke="#2e3b3c" stroke-width="2"/>
+  <text x="100" y="450" fill="#55d6ca" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="27">APP</text>
+  <text x="295" y="450" fill="#e6a15f" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="27">WEBSOCKET GATEWAY</text>
+  <text x="650" y="450" fill="#75c77a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="27">PERSISTENT PTY DAEMON</text>
+  <text x="100" y="515" fill="#73817e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24">persistent shells · focused workspaces · one browser tab</text>
+</svg>
