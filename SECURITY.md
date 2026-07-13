@@ -24,4 +24,8 @@ privileged internal service:
   values.
 - Keep `/api/admin/*`, `web-console-ws.service`, and `web-console-pty.service`
   private to the host or trusted network.
+- Run the supplied services as the dedicated unprivileged `webconsole` user;
+  never deploy the public defaults as `root`.
+- Set `FILE_ACCESS_ROOT` to a dedicated workspace and leave
+  `ALLOW_FULL_FILESYSTEM=false`.
 - Rotate local `.env` secrets before making a private fork public.

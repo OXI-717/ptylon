@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-07-13
+
+### Security
+
+- Updated production dependencies to `next@16.2.6` and `ws@8.21.0` to clear
+  known high-severity advisories.
+- WebSocket authentication now uses the httpOnly `wc-token` cookie rather than
+  a JWT in the WebSocket URL; the PTY smoke rejects query-string tokens.
+- File APIs are constrained by `FILE_ACCESS_ROOT` by default. Full filesystem
+  access requires the explicit unsafe `ALLOW_FULL_FILESYSTEM=true` opt-in.
+- Supplied systemd units run under an unprivileged `webconsole` account with
+  `NoNewPrivileges` and `PrivateTmp` enabled.
+
+### CI and verification
+
+- CI now runs `pnpm audit --prod --audit-level=high` and browser regression.
+- Removed Next.js `ignoreBuildErrors`; type errors now fail a production build.
+- Verified in a clean clone: install, typecheck, lint, build, PTY smoke, audit,
+  and whitespace check all pass.
+
 ## 2026-07-08
 
 ### Added

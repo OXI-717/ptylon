@@ -29,6 +29,21 @@ function send(ws, data) {
   if (ws.readyState === 1) ws.send(JSON.stringify(data));
 }
 
+function tokenFromCookie(header) {
+  if (!header) return '';
+  for (const item of header.split(';')) {
+    const [name, ...value] = item.trim().split('=');
+    if (name === 'wc-token') {
+      try {
+        return decodeURIComponent(value.join('='));
+      } catch {
+        return '';
+      }
+    }
+  }
+  return '';
+}
+
 function makeCid(prefix = 'gw') {
   requestSeq += 1;
   return `${prefix}-${Date.now()}-${requestSeq}`;
@@ -263,8 +278,7 @@ export function startWsServer() {
   }, 30000);
 
   wss.on('connection', (ws, req) => {
-    const url = new URL(req.url, `http://localhost:${WS_PORT}`);
-    const token = url.searchParams.get('token');
+    const token = tokenFromCookie(req.headers.cookie);
 
     if (!token) {
       send(ws, { type: 'error', data: 'Missing auth token' });

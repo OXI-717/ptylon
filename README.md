@@ -75,17 +75,29 @@ NEXT_PUBLIC_APP_LABEL=Web Console
 
 ## Production With Systemd
 
-Install the unit files:
+The supplied units deliberately run as an unprivileged `webconsole` user. Do
+not change them to `root`: the terminal and file APIs have the same privileges
+as this account.
+
+Create the service account and a dedicated workspace before installing units:
 
 ```bash
+sudo useradd --system --create-home --home-dir /var/lib/webconsole --shell /usr/sbin/nologin webconsole
+sudo install -d -o webconsole -g webconsole -m 0750 /workspace /workspace/uploads
 sudo mkdir -p /opt
 sudo cp -a "$PWD" /opt/web-console
+sudo chown -R webconsole:webconsole /opt/web-console
 sudo install -m 644 deploy/systemd/web-console.service /etc/systemd/system/web-console.service
 sudo install -m 644 deploy/systemd/web-console-pty.service /etc/systemd/system/web-console-pty.service
 sudo install -m 644 deploy/systemd/web-console-ws.service /etc/systemd/system/web-console-ws.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now web-console-pty.service web-console-ws.service web-console.service
 ```
+
+Set both `WORKSPACE_ROOT` and `FILE_ACCESS_ROOT` to the dedicated workspace.
+`FILE_ACCESS_ROOT` is an allow-list boundary for the file manager, editor, and
+uploads. `ALLOW_FULL_FILESYSTEM=true` is an unsafe compatibility escape hatch,
+not a production setting.
 
 On Ubuntu hosts with `unattended-upgrades`, also install the `needrestart`
 override:
@@ -205,7 +217,8 @@ Some sites detect headless Chrome or datacenter/server IPs. Anti-bot flows such 
 
 - `web-console-pty.service` binds to `127.0.0.1` only. Do not expose it publicly.
 - On Ubuntu, install the `needrestart` override before relying on long-lived sessions. Automatic service restarts can otherwise kill active PTYs during unattended upgrades.
-- Browser WebSocket auth is still enforced at `web-console-ws.service` with JWT.
+- Browser WebSocket auth is enforced by the httpOnly JWT cookie; the bearer
+  token is never placed in the WebSocket URL or proxy access logs.
 - Auth cookies are secure in production, except for loopback localhost testing. Set `ALLOW_INSECURE_COOKIE=true` only for explicit local HTTP testing on non-loopback hosts.
 - PTY creation confines requested cwd values under `ALLOWED_CWD_ROOT`/`WORKSPACE_ROOT`.
 - Idle terminal cleanup is controlled by `PTY_IDLE_TIMEOUT_HOURS`. The default is 168 hours, and values below 48 hours are raised to 48 hours.
@@ -223,6 +236,7 @@ Some sites detect headless Chrome or datacenter/server IPs. Anti-bot flows such 
 - The richer workspace state wins during local/server merge, preventing old server snapshots from overwriting a multi-workspace browser layout.
 - Theme mode, selected palette, and imported custom palettes sync through the same server-side workspace state after login/refresh.
 - `.env` is intentionally gitignored. Commit `.env.example`, never real secrets.
+- Run `pnpm audit --prod --audit-level=high` before deploying an update.
 
 ## Current Limitations
 

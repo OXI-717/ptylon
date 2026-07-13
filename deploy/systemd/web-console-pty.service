@@ -4,12 +4,15 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=webconsole
+Group=webconsole
 WorkingDirectory=/opt/web-console
 EnvironmentFile=/opt/web-console/.env
 ExecStart=/usr/bin/node server/pty-daemon.mjs
 Restart=on-failure
 RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
 KillSignal=SIGINT
 KillMode=mixed
 TimeoutStopSec=10

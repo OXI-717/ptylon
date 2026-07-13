@@ -5,12 +5,15 @@ Requires=web-console-pty.service
 
 [Service]
 Type=simple
-User=root
+User=webconsole
+Group=webconsole
 WorkingDirectory=/opt/web-console
 EnvironmentFile=/opt/web-console/.env
 ExecStart=/usr/bin/node server/ws-server.mjs
 Restart=on-failure
 RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
 KillSignal=SIGINT
 KillMode=mixed
 TimeoutStopSec=10

@@ -66,7 +66,9 @@ async function stopProcess(child) {
 }
 
 function connectBrowser() {
-  const ws = new WebSocket(`ws://127.0.0.1:${wsPort}?token=${encodeURIComponent(token)}`);
+  const ws = new WebSocket(`ws://127.0.0.1:${wsPort}`, {
+    headers: { Cookie: `wc-token=${encodeURIComponent(token)}` },
+  });
   const messages = [];
   ws.on('message', (raw) => {
     messages.push(JSON.parse(raw.toString()));
@@ -78,6 +80,20 @@ function connectBrowser() {
       resolve({ ws, messages });
     });
     ws.on('error', reject);
+  });
+}
+
+function expectQueryTokenRejected() {
+  const ws = new WebSocket(`ws://127.0.0.1:${wsPort}?token=${encodeURIComponent(token)}`);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('query-token websocket did not close')), 5000);
+    ws.on('open', () => {});
+    ws.on('close', (code) => {
+      clearTimeout(timer);
+      assert(code === 4001, `expected query-token rejection code 4001, got ${code}`);
+      resolve();
+    });
+    ws.on('error', () => {});
   });
 }
 
@@ -104,6 +120,8 @@ async function run() {
 
   const daemon = await startProcess('pty daemon', ['server/pty-daemon.mjs'], daemonEnv, /PTY daemon listening/);
   let gateway = await startProcess('ws gateway', ['server/ws-server.mjs'], gatewayEnv, /WebSocket gateway listening/);
+
+  await expectQueryTokenRejected();
 
   const first = await connectBrowser();
   first.ws.send(JSON.stringify({ type: 'create', cols: 80, rows: 24, _cid: 'smoke-create' }));

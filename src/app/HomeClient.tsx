@@ -99,20 +99,18 @@ function collectKnownSessionIds(
   return ids;
 }
 
-function getWebSocketUrl(token: string) {
+function getWebSocketUrl() {
   const override = process.env.NEXT_PUBLIC_WS_URL;
   if (override) {
-    const url = new URL(override);
-    url.searchParams.set('token', token);
-    return url.toString();
+    return override;
   }
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
   if (isLocalHost) {
-    return `${protocol}//${window.location.hostname}:${DEFAULT_WS_PORT}?token=${encodeURIComponent(token)}`;
+    return `${protocol}//${window.location.hostname}:${DEFAULT_WS_PORT}`;
   }
-  return `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`;
+  return `${protocol}//${window.location.host}/ws`;
 }
 
 function browserTabName(url: string) {
@@ -200,10 +198,8 @@ export default function Home() {
   // --- WebSocket ---
   useEffect(() => {
     if (!authenticated) return;
-    const { wsToken } = useWorkspaceStore.getState();
-    if (!wsToken) return;
     let closedByCleanup = false;
-    const wsUrl = getWebSocketUrl(wsToken);
+    const wsUrl = getWebSocketUrl();
     const socket = new WebSocket(wsUrl);
     socket.onopen = () => {
       if (closedByCleanup) return;
