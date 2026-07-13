@@ -369,7 +369,9 @@ export function startWsServer() {
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
 
-  console.log(`[WS] WebSocket gateway listening on ${WS_HOST}:${WS_PORT}`);
+  wss.on('listening', () => {
+    console.log(`[WS] WebSocket gateway listening on ${WS_HOST}:${WS_PORT}`);
+  });
   return wss;
 }
 
