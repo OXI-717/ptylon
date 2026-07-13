@@ -36,6 +36,7 @@ services:
 
   ws:
     image: ptylon:local
+    pull_policy: never
     restart: unless-stopped
     command: ["node", "server/ws-server.mjs"]
     environment:
@@ -58,6 +59,7 @@ services:
 
   pty:
     image: ptylon:local
+    pull_policy: never
     restart: unless-stopped
     command: ["node", "server/pty-daemon.mjs"]
     environment:
