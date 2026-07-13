@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/ptylon-logo.png" alt="Ptylon logo" width="140" />
+  <img src="docs/images/ptylon-logo.webp" alt="Ptylon logo" width="140" />
 </p>
 
 # Ptylon
@@ -10,14 +10,18 @@
 [![Node.js 22+](https://img.shields.io/badge/node-22%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![Ptylon server-hall terminal workspace](docs/images/ptylon-hero.png)
+![Ptylon server-hall terminal workspace](docs/images/ptylon-hero.webp)
 
-**Ptylon** brings persistent terminals, browser tools, files, editing, and
-workspaces into one browser tab. It is designed for a server you control—not a
-hosted shell service.
+**Ptylon** puts persistent terminals, a real browser, files, and an editor in a single browser tab on a server you own. It is built for running coding agents — **Claude Code, Codex, and anything else that lives in a shell** — where their sessions survive restarts, they can drive a real browser, and you can check on them from your phone.
 
 | [Quick start](#quick-start) | [Docker](#docker-compose) | [Architecture](#architecture) | [Production](#production-with-systemd) | [Contributing](CONTRIBUTING.md) |
 | --- | --- | --- | --- | --- |
+
+## The Problem
+
+Running a coding agent on a remote box is clunky. You SSH in, start Claude Code in tmux, and hope the session is still alive when you come back. The agent can run commands but can't *see* a browser to test what it built. Your files are on the server, your editor is somewhere else, and none of it opens on a phone. Close the laptop and the work is stranded.
+
+Ptylon removes that friction: the agent runs in a persistent server-side session, gets a real browser it can click through, and the whole workspace — terminals, files, editor, browser — is one authenticated URL you can open from anything.
 
 ## Why Ptylon
 
@@ -28,6 +32,18 @@ hosted shell service.
 - **Run it yourself.** The repository includes a guarded systemd installer,
   reverse-proxy guidance, a production smoke check, and an explicit security
   boundary around the server workspace.
+
+## Built for AI Agents
+
+- **Persistent agent sessions.** A dedicated PTY daemon owns the shell, so an agent like Claude Code keeps running when the web gateway restarts or you switch devices. Only an explicit daemon restart ends a session.
+- **A browser the agent can see.** Server-side Chrome renders as a live panel and is scriptable over CDP through the `webc` CLI and a loopback admin API — the agent can open a page, click, type, and screenshot the same session you see.
+- **"It needs you" notifications.** A running command raises an unread badge via OSC escapes, so you know when the agent is waiting on input without watching it.
+- **Everything in one tab.** Split panes, named workspaces, a file manager, and a Monaco editor sit next to the terminal.
+- **Reachable from anything.** The workspace is one authenticated URL — open it from a laptop or a phone and pick up where the agent left off.
+
+### A typical session
+
+Open Ptylon, start Claude Code in a pane, and ask it to build a feature. It edits files, runs the dev server, and opens a browser panel to check the result — you watch it click through the page. You split off a second terminal for logs and close the laptop. On your phone later you reopen the same URL: the agent is still running, the browser panel is still there, and you approve the next step.
 
 ## Screenshots
 
@@ -55,18 +71,20 @@ browser
        -> localhost PTY daemon :8792
             -> raw node-pty bash sessions
 
-SQLite data: ./data/web-console.db
+SQLite data: ./data/web-console.db (legacy compatibility path)
 Workspace state: localStorage + SQLite
 Uploads: configurable UPLOAD_DIR
 ```
 
-Services:
+Service roles (the current systemd unit filenames retain the legacy `web-console` name for compatibility):
 
 ```text
 web-console.service      Next.js standalone app, port 8790
 web-console-ws.service   authenticated WebSocket gateway, port 8791
 web-console-pty.service  localhost-only PTY daemon, port 8792
 ```
+
+Architecture decisions: [raw `node-pty` backend](docs/adr/001-raw-node-pty-backend.md) and [restartable WebSocket gateway](docs/adr/002-restartable-websocket-gateway.md).
 
 ## Requirements
 
@@ -336,3 +354,23 @@ Some sites detect headless Chrome or datacenter/server IPs. Anti-bot flows such 
 - Server-side browser panels can be blocked by headless-browser or IP reputation checks even when normal pages and local previews work.
 - Click-to-cursor across wrapped input lines is covered by `pnpm test:browser-regression`; keep that browser smoke passing before changing terminal input handling.
 - For private forks or self-hosted deployments, rotate any real `.env` secrets before publishing a fork or support bundle.
+
+## Roadmap
+
+**Shipped**
+- Persistent PTY daemon with a restart-safe WebSocket gateway
+- Server-side browser panels with CDP control via `webc`
+- Docker Compose and systemd deployment, theme gallery, mobile controls
+
+**Next**
+- Headed / VNC browser mode for anti-bot targets
+- A session backend that survives host reboots
+- Published container image
+
+## Acknowledgments
+
+Built on [xterm.js](https://xtermjs.org), [node-pty](https://www.npmjs.com/package/node-pty), the [Monaco Editor](https://microsoft.github.io/monaco-editor/), and [Next.js](https://nextjs.org).
+
+## License
+
+[MIT](LICENSE) — alexfrmn, 2026
