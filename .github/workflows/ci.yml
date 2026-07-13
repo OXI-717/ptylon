@@ -68,3 +68,19 @@ jobs:
           trap 'kill "$app_pid" "$ws_pid" "$pty_pid" 2>/dev/null || true' EXIT
           for _ in $(seq 1 30); do curl --fail --silent http://127.0.0.1:8790/api/auth >/dev/null && break; sleep 1; done
           pnpm test:browser-regression
+
+      - name: Docker Compose smoke
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          trap 'docker compose down -v --remove-orphans' EXIT
+          docker compose up --build -d
+          for _ in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8790/api/auth >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:8790/api/auth >/dev/null
+          test "$(docker compose exec -T app id -u)" -ne 0
+          test "$(docker compose exec -T ws id -u)" -ne 0
+          test "$(docker compose exec -T pty id -u)" -ne 0
+          docker compose ps
