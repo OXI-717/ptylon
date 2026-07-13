@@ -79,6 +79,19 @@ The supplied units deliberately run as an unprivileged `webconsole` user. Do
 not change them to `root`: the terminal and file APIs have the same privileges
 as this account.
 
+For a clean server, the turnkey path is:
+
+```bash
+git clone https://github.com/alexfrmn/web-console.git
+cd web-console
+sudo ./scripts/install-systemd.sh
+```
+
+It creates an unprivileged account, workspace, generated secrets, production
+build, systemd services, and a needrestart guard. It prints the generated app
+password once. The service listens locally; configure HTTPS and an external
+access gate in nginx/Caddy before exposing it beyond the server.
+
 Create the service account and a dedicated workspace before installing units:
 
 ```bash
