@@ -14,7 +14,14 @@ import { buildJobPrompt, engineLaunchCommand, jobResultPath, newJobId, sessionRe
 // NOTE (needs live tuning on a real deployment): the delay between starting the engine and
 // injecting the prompt is a fixed heuristic — a TUI engine (claude) must be ready to accept
 // input. Tune ENGINE_STARTUP_MS per engine/host.
-const ENGINE_STARTUP_MS = Number(process.env.ENGINE_STARTUP_MS || 2500);
+const ENGINE_STARTUP_MS = Number(process.env.ENGINE_STARTUP_MS || 6000);
+// Live-tuned on real claude (2026-07-16): the engine first-run shows a folder-trust dialog
+// that --dangerously-skip-permissions does NOT bypass, and its TUI uses bracketed paste, so
+// an injected trailing \n does not submit. So: after startup, send Enter to accept trust;
+// after pasting the task, send a separate Enter to submit.
+const TRUST_SETTLE_MS = Number(process.env.TRUST_SETTLE_MS || 4000);
+const SUBMIT_DELAY_MS = Number(process.env.SUBMIT_DELAY_MS || 1500);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function POST(req: NextRequest) {
   const denied = verifyAdminRequest(req);
@@ -46,11 +53,17 @@ export async function POST(req: NextRequest) {
     await fs.mkdir(path.dirname(refPath), { recursive: true });
     await fs.writeFile(refPath, sessionId, 'utf8');
 
-    // Start the engine, then inject the task+tail after it is ready.
+    // Start the engine.
     await sendGatewayMessage({ type: 'input', sessionId, data: `${launch}\n` });
-    await new Promise((r) => setTimeout(r, ENGINE_STARTUP_MS));
+    await sleep(ENGINE_STARTUP_MS);
+    // Accept the folder-trust dialog (Enter = "Yes"); harmless empty submit if none shown.
+    await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
+    await sleep(TRUST_SETTLE_MS);
+    // Paste the task+tail, then submit with a separate Enter (bracketed paste).
     const prompt = buildJobPrompt(task, jobResultPath(jobId), nonce);
-    await sendGatewayMessage({ type: 'input', sessionId, data: `${prompt}\n` });
+    await sendGatewayMessage({ type: 'input', sessionId, data: prompt });
+    await sleep(SUBMIT_DELAY_MS);
+    await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
 
     return NextResponse.json({ job_id: jobId, session_id: sessionId }, { status: 201 });
   } catch (error) {
