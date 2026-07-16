@@ -11,6 +11,10 @@ cd ~/cc/oxi/ptylon
 git checkout feat/oxi-remote-agents-jobs-hook
 pnpm install
 
+# ⚠ macOS Apple Silicon: pnpm распаковывает arm64 spawn-helper node-pty БЕЗ exec-бита →
+# node-pty падает posix_spawnp, daemon крашится. Одноразовый фикс:
+chmod +x node_modules/.pnpm/node-pty@*/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper
+
 # .env для локали
 cp verify/env.local.example .env
 mkdir -p /tmp/ptylon-verify/workspace
@@ -67,6 +71,14 @@ oxi-remote start --host local --engine claude \
 Убери fake из PATH, поставь настоящий залогиненный `claude` на хост (device-auth).
 Повтори `oxi-remote start … --engine claude --task "review <файл в /tmp/ptylon-verify/workspace>"`.
 Докрути `ENGINE_STARTUP_MS` (реальному TUI нужно больше времени на старт).
+
+## Статус проверки (2026-07-16, локально на Mac arm64)
+
+- **Стадия 1 — ✅ зелёная:** 401 → 201+job_id (gateway `create→created` работает) → 404 → status JSON с реальным pty_tail.
+- **Стадия 2 (fake-claude) — ✅ зелёная:** `oxi-remote start` → `{"status":"done","verdict":{"ok":true,...}}`, exit 0. Весь путь create→inject→файл→reader→вердикт подтверждён.
+- **Стадия 3 (реальный claude) — осталась:** перезапусти daemon БЕЗ `/tmp/ptylon-verify` в PATH (чтобы нашёлся настоящий `claude`), задай задачу-ревью реального файла в workspace, при `timeout` — подними `ENGINE_STARTUP_MS`.
+
+Пойманные и исправленные живой проверкой баги: Next16 `await params` (jobs-hook), fake-claude line-buffered stdin, node-pty arm64 spawn-helper +x.
 
 ## Что мне прислать, если что-то не так
 - Вывод `smoke-stage1.sh` (стадия 1).
