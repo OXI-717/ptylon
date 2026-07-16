@@ -10,13 +10,14 @@ const TAIL_CHARS = 4000;
 // GET /api/admin/jobs/:id — liveness + recent PTY tail for the client dispatcher's
 // classify(): { status, pty_tail, process_alive }. Liveness/tail come from attaching to the
 // session (daemon returns `scrollback`); a missing session means the engine exited.
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const denied = verifyAdminRequest(req);
   if (denied) return denied;
   try {
+    const { id } = await params;
     let sessionId: string;
     try {
-      sessionId = (await fs.readFile(resolveSafePath(sessionRefPath(params.id)), 'utf8')).trim();
+      sessionId = (await fs.readFile(resolveSafePath(sessionRefPath(id)), 'utf8')).trim();
     } catch {
       return NextResponse.json({ status: 'unknown', pty_tail: '', process_alive: false });
     }

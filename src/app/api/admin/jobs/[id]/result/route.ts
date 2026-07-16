@@ -7,11 +7,12 @@ import { jobResultPath } from '@/lib/jobs';
 // GET /api/admin/jobs/:id/result — host-local reader. Returns the raw result.json bytes the
 // engine wrote (out-of-band), or 404 if not yet present. Path is jailed via resolveSafePath,
 // so JOBS_ROOT must live under FILE_ACCESS_ROOT.
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const denied = verifyAdminRequest(req);
   if (denied) return denied;
   try {
-    const safe = resolveSafePath(jobResultPath(params.id));
+    const { id } = await params;
+    const safe = resolveSafePath(jobResultPath(id));
     const buf = await fs.readFile(safe);
     return new NextResponse(buf, { headers: { 'Content-Type': 'application/json' } });
   } catch (error) {
