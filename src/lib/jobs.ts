@@ -19,18 +19,29 @@ export function newJobId(): string {
 
 // Interactive launch command per engine. Kept minimal; a real deployment may template model
 // and flags. The engine is started in the session's bash, then the task is injected.
-const ENGINE_COMMANDS: Record<string, string> = {
-  claude: 'claude --dangerously-skip-permissions',
-  // codex asks for approval before writing files; bypass it (codex equivalent of claude's
-  // --dangerously-skip-permissions). NOTE: codex's TUI submit/composer differs from claude —
-  // the trust/submit injection timing still needs live tuning (not yet verified end-to-end).
-  codex: 'codex --dangerously-bypass-approvals-and-sandbox',
+export interface EngineSpec {
+  // shell command that starts the engine interactively in the session cwd
+  launch: string;
+  // whether the engine shows a first-run folder-trust dialog to accept with Enter before the
+  // task (claude/agy do; codex/opencode do not — an extra Enter would submit an empty turn)
+  needsTrustAccept: boolean;
+}
+
+const ENGINES: Record<string, EngineSpec> = {
+  claude: { launch: 'claude --dangerously-skip-permissions', needsTrustAccept: true },
+  // codex asks for approval before writing files; bypass it. No folder-trust dialog.
+  codex: { launch: 'codex --dangerously-bypass-approvals-and-sandbox', needsTrustAccept: false },
+  // agy is claude-structured (interactive + --dangerously-skip-permissions, folder-trust).
+  // Quirk: agy may ignore cwd, so the result path in the prompt is absolute (jobResultPath).
+  agy: { launch: 'agy --dangerously-skip-permissions', needsTrustAccept: true },
+  // opencode interactive TUI (natural headless form is `opencode run "<msg>"`).
+  opencode: { launch: 'opencode', needsTrustAccept: false },
 };
 
-export function engineLaunchCommand(engine: string): string {
-  const cmd = ENGINE_COMMANDS[engine];
-  if (!cmd) throw new Error(`unknown engine: ${engine}`);
-  return cmd;
+export function engineSpec(engine: string): EngineSpec {
+  const spec = ENGINES[engine];
+  if (!spec) throw new Error(`unknown engine: ${engine}`);
+  return spec;
 }
 
 // Out-of-band result-capture tail — the client oxi-remote-agents reads the verdict from the

@@ -5,7 +5,7 @@ import { verifyAdminRequest } from '@/lib/admin-auth';
 import { sendGatewayRequest } from '@/lib/admin-gateway-request';
 import { sendGatewayMessage } from '@/lib/admin-gateway';
 import { resolveSafePath } from '@/lib/fs-security';
-import { buildJobPrompt, engineLaunchCommand, jobResultPath, newJobId, sessionRefPath } from '@/lib/jobs';
+import { buildJobPrompt, engineSpec, jobResultPath, newJobId, sessionRefPath } from '@/lib/jobs';
 
 // POST /api/admin/jobs — create a PTY session in `cwd`, start the engine interactively,
 // inject the task with the out-of-band result tail. Returns { job_id, session_id }.
@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
     }
 
     const jobId = newJobId();
-    const launch = engineLaunchCommand(engine); // throws on unknown engine
+    const spec = engineSpec(engine); // throws on unknown engine
+    const launch = spec.launch;
 
     const created = await sendGatewayRequest(
       { type: 'create', cwd, cols: 200, rows: 50, name: jobId },
@@ -56,9 +57,12 @@ export async function POST(req: NextRequest) {
     // Start the engine.
     await sendGatewayMessage({ type: 'input', sessionId, data: `${launch}\n` });
     await sleep(ENGINE_STARTUP_MS);
-    // Accept the folder-trust dialog (Enter = "Yes"); harmless empty submit if none shown.
-    await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
-    await sleep(TRUST_SETTLE_MS);
+    // Accept the folder-trust dialog (Enter = "Yes") only for engines that show one — an extra
+    // Enter on codex/opencode would submit an empty turn.
+    if (spec.needsTrustAccept) {
+      await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
+      await sleep(TRUST_SETTLE_MS);
+    }
     // Paste the task+tail, then submit with a separate Enter (bracketed paste).
     const prompt = buildJobPrompt(task, jobResultPath(jobId), nonce);
     await sendGatewayMessage({ type: 'input', sessionId, data: prompt });
