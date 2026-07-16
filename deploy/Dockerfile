@@ -18,8 +18,14 @@ RUN pnpm build && pnpm prune --prod
 
 FROM node:22-bookworm-slim AS runtime
 
+# Base runtime + a common toolbox the coding-agent engines expect for real work: python3
+# (with pip/venv + build tooling for C-extensions), plus the everyday CLIs agents reach for
+# (curl/wget/jq/ripgrep/less/ps/unzip/ssh). Keep --no-install-recommends to bound image size.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends bash ca-certificates tini git \
+  && apt-get install -y --no-install-recommends \
+       bash ca-certificates tini git \
+       python3 python3-pip python3-venv build-essential \
+       curl wget jq ripgrep less procps unzip openssh-client \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --system ptylon \
   && useradd --system --gid ptylon --create-home --home-dir /home/ptylon --shell /bin/bash ptylon \
@@ -62,6 +68,7 @@ ENV NODE_ENV=production \
     TRUST_SETTLE_MS=4000 \
     SUBMIT_DELAY_MS=1500 \
     UPLOAD_DIR=/workspace/uploads \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
     NEXT_PUBLIC_WORKSPACE_ROOT=/workspace \
     NEXT_PUBLIC_UPLOAD_DIR=/workspace
 
