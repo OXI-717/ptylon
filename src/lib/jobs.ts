@@ -21,7 +21,10 @@ export function newJobId(): string {
 // and flags. The engine is started in the session's bash, then the task is injected.
 const ENGINE_COMMANDS: Record<string, string> = {
   claude: 'claude --dangerously-skip-permissions',
-  codex: 'codex',
+  // codex asks for approval before writing files; bypass it (codex equivalent of claude's
+  // --dangerously-skip-permissions). NOTE: codex's TUI submit/composer differs from claude —
+  // the trust/submit injection timing still needs live tuning (not yet verified end-to-end).
+  codex: 'codex --dangerously-bypass-approvals-and-sandbox',
 };
 
 export function engineLaunchCommand(engine: string): string {
