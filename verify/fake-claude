@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""Fake `claude` for local verification of the oxi-remote-agents jobs-hook (Stage 2).
+
+The jobs-hook launches the engine interactively (`claude ...`) and then injects the task
+prompt on stdin. This stand-in reads stdin, extracts the result-file path and nonce from
+the out-of-band tail, writes a valid verdict there, and exits — proving the full path
+(create → inject → file → host-local reader → verdict) without a real LLM.
+
+Install: put this on the PATH of the process that launches pty-daemon, named `claude`.
+"""
+import re
+import sys
+import json
+import os
+
+TEXT = sys.stdin.read()  # the injected prompt arrives here
+
+m_path = re.search(r"to the file (\S+)", TEXT)
+m_nonce = re.search(r'"nonce"\s*:\s*"([^"]+)"', TEXT)
+
+if m_path and m_nonce:
+    path, nonce = m_path.group(1), m_nonce.group(1)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump({"nonce": nonce, "verdict": {"ok": True, "note": "fake-claude verify"}}, f)
+    print(f"[fake-claude] wrote verdict to {path}")
+else:
+    print("[fake-claude] no result path/nonce found in prompt", file=sys.stderr)
+    sys.exit(1)
