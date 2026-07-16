@@ -20,28 +20,52 @@ export function newJobId(): string {
 // Interactive launch command per engine. Kept minimal; a real deployment may template model
 // and flags. The engine is started in the session's bash, then the task is injected.
 export interface EngineSpec {
-  // shell command that starts the engine interactively in the session cwd
+  // shell command that starts the engine in the session cwd
   launch: string;
-  // whether the engine shows a first-run folder-trust dialog to accept with Enter before the
-  // task (claude/agy do; codex/opencode do not — an extra Enter would submit an empty turn)
+  // "interactive": start the TUI, then inject the task (claude/codex/agy).
+  // "headless": run once with the prompt as a command argument (opencode run).
+  mode: 'interactive' | 'headless';
+  // interactive only: engine shows a first-run folder-trust dialog to accept with Enter before
+  // the task (claude/agy). codex does not — an extra Enter would submit an empty turn.
   needsTrustAccept: boolean;
 }
 
 const ENGINES: Record<string, EngineSpec> = {
-  claude: { launch: 'claude --dangerously-skip-permissions', needsTrustAccept: true },
+  claude: {
+    launch: 'claude --dangerously-skip-permissions',
+    mode: 'interactive',
+    needsTrustAccept: true,
+  },
   // codex asks for approval before writing files; bypass it. No folder-trust dialog.
-  codex: { launch: 'codex --dangerously-bypass-approvals-and-sandbox', needsTrustAccept: false },
+  codex: {
+    launch: 'codex --dangerously-bypass-approvals-and-sandbox',
+    mode: 'interactive',
+    needsTrustAccept: false,
+  },
   // agy is claude-structured (interactive + --dangerously-skip-permissions, folder-trust).
   // Quirk: agy may ignore cwd, so the result path in the prompt is absolute (jobResultPath).
-  agy: { launch: 'agy --dangerously-skip-permissions', needsTrustAccept: true },
-  // opencode interactive TUI (natural headless form is `opencode run "<msg>"`).
-  opencode: { launch: 'opencode', needsTrustAccept: false },
+  agy: {
+    launch: 'agy --dangerously-skip-permissions',
+    mode: 'interactive',
+    needsTrustAccept: true,
+  },
+  // opencode's interactive TUI gates file writes behind a permission prompt with no CLI bypass;
+  // its headless `run` form takes --dangerously-skip-permissions and the prompt as an argument.
+  opencode: {
+    launch: 'opencode run --dangerously-skip-permissions',
+    mode: 'headless',
+    needsTrustAccept: false,
+  },
 };
 
 export function engineSpec(engine: string): EngineSpec {
   const spec = ENGINES[engine];
   if (!spec) throw new Error(`unknown engine: ${engine}`);
   return spec;
+}
+
+export function promptRefPath(jobId: string): string {
+  return path.join(JOBS_ROOT, jobId, 'prompt.txt');
 }
 
 // Out-of-band result-capture tail — the client oxi-remote-agents reads the verdict from the

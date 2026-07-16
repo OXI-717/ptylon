@@ -5,7 +5,7 @@ import { verifyAdminRequest } from '@/lib/admin-auth';
 import { sendGatewayRequest } from '@/lib/admin-gateway-request';
 import { sendGatewayMessage } from '@/lib/admin-gateway';
 import { resolveSafePath } from '@/lib/fs-security';
-import { buildJobPrompt, engineSpec, jobResultPath, newJobId, sessionRefPath } from '@/lib/jobs';
+import { buildJobPrompt, engineSpec, jobResultPath, newJobId, promptRefPath, sessionRefPath } from '@/lib/jobs';
 
 // POST /api/admin/jobs — create a PTY session in `cwd`, start the engine interactively,
 // inject the task with the out-of-band result tail. Returns { job_id, session_id }.
@@ -54,20 +54,31 @@ export async function POST(req: NextRequest) {
     await fs.mkdir(path.dirname(refPath), { recursive: true });
     await fs.writeFile(refPath, sessionId, 'utf8');
 
-    // Start the engine.
-    await sendGatewayMessage({ type: 'input', sessionId, data: `${launch}\n` });
-    await sleep(ENGINE_STARTUP_MS);
-    // Accept the folder-trust dialog (Enter = "Yes") only for engines that show one — an extra
-    // Enter on codex/opencode would submit an empty turn.
-    if (spec.needsTrustAccept) {
-      await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
-      await sleep(TRUST_SETTLE_MS);
-    }
-    // Paste the task+tail, then submit with a separate Enter (bracketed paste).
     const prompt = buildJobPrompt(task, jobResultPath(jobId), nonce);
-    await sendGatewayMessage({ type: 'input', sessionId, data: prompt });
-    await sleep(SUBMIT_DELAY_MS);
-    await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
+
+    if (spec.mode === 'headless') {
+      // Run once with the prompt as a command argument (opencode run). Write the prompt to a
+      // file and pass it via "$(cat ...)" so quotes/newlines survive the single shell line.
+      const promptPath = resolveSafePath(promptRefPath(jobId));
+      await fs.writeFile(promptPath, prompt, 'utf8');
+      await sendGatewayMessage({
+        type: 'input',
+        sessionId,
+        data: `${launch} "$(cat ${JSON.stringify(promptPath)})"\n`,
+      });
+    } else {
+      // Interactive: start the TUI, accept folder-trust (claude/agy), paste the task, submit.
+      await sendGatewayMessage({ type: 'input', sessionId, data: `${launch}\n` });
+      await sleep(ENGINE_STARTUP_MS);
+      if (spec.needsTrustAccept) {
+        await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
+        await sleep(TRUST_SETTLE_MS);
+      }
+      // Paste the task+tail, then submit with a separate Enter (bracketed paste).
+      await sendGatewayMessage({ type: 'input', sessionId, data: prompt });
+      await sleep(SUBMIT_DELAY_MS);
+      await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
+    }
 
     return NextResponse.json({ job_id: jobId, session_id: sessionId }, { status: 201 });
   } catch (error) {
