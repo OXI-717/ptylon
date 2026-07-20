@@ -130,7 +130,6 @@ quote_env() {
 resolve_ptylon_ids() {
   local uid="$1"
   local gid="$2"
-  local fallback=0
 
   if [ -z "$uid" ] || [ -z "$gid" ]; then
     if command -v docker >/dev/null 2>&1; then
@@ -144,15 +143,11 @@ resolve_ptylon_ids() {
   fi
 
   case "$uid" in
-    ''|*[!0-9]*) uid=999; fallback=1 ;;
+    ''|*[!0-9]*) fail "unable to resolve ptylon uid/gid from ptylon:local; set PTYLON_UID/PTYLON_GID" ;;
   esac
   case "$gid" in
-    ''|*[!0-9]*) gid=999; fallback=1 ;;
+    ''|*[!0-9]*) fail "unable to resolve ptylon uid/gid from ptylon:local; set PTYLON_UID/PTYLON_GID" ;;
   esac
-
-  if [ "$fallback" -eq 1 ]; then
-    log "WARNING: unable to resolve ptylon uid/gid from ptylon:local; using fallback ${uid}:${gid}"
-  fi
 
   printf '%s %s\n' "$uid" "$gid"
 }
@@ -197,11 +192,6 @@ if [ ! -e "$claude_json" ]; then
 fi
 [ -f "$claude_json" ] || fail "PTYLON_CLAUDE_JSON must be a file: $claude_json"
 chmod 0600 "$claude_json"
-
-read -r ptylon_uid ptylon_gid <<EOF
-$(resolve_ptylon_ids "$ptylon_uid" "$ptylon_gid")
-EOF
-sync_seat_home_ownership "$ptylon_uid" "$ptylon_gid"
 
 if [ -f "$token_file" ] && [ "$rotate_token" -eq 0 ]; then
   admin_token=$(tr -d '\r\n' < "$token_file")
@@ -275,6 +265,12 @@ fi
 require_command docker
 require_command curl
 require_command systemctl
+
+resolved_ids=$(resolve_ptylon_ids "$ptylon_uid" "$ptylon_gid")
+read -r ptylon_uid ptylon_gid <<EOF
+$resolved_ids
+EOF
+sync_seat_home_ownership "$ptylon_uid" "$ptylon_gid"
 
 systemctl daemon-reload
 systemctl enable "$service_name"

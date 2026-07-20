@@ -154,7 +154,7 @@ describe('deploy/bootstrap-host.sh', () => {
     expect(unitText).toContain('Restart=on-failure');
   });
 
-  it('chowns seat homes using PTYLON_UID/PTYLON_GID overrides without consulting docker', async () => {
+  it('does not chown seat homes under --render-only', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-'));
     const chownLog = path.join(root, 'chown.log');
     const result = await runBootstrap(
@@ -167,20 +167,20 @@ describe('deploy/bootstrap-host.sh', () => {
     );
 
     expect(result.code, result.stderr).toBe(0);
-    const chownLines = (await readFile(chownLog, 'utf8')).trim().split('\n');
-    expect(chownLines).toContain(`-R 1234:5678 ${result.installRoot}/seats/codex-home ${result.installRoot}/seats/claude-home ${result.installRoot}/seats/opencode-home ${result.installRoot}/seats/agy-home`);
-    expect(chownLines).toContain(`1234:5678 ${result.installRoot}/seats/claude-home/.claude.json`);
+    await expect(stat(chownLog)).rejects.toThrow();
   });
 
-  it('resolves seat ownership from docker when PTYLON_UID/GID are not provided', async () => {
+  it('fails closed when seat ownership cannot be resolved', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-fail-'));
+    const chownLog = path.join(root, 'chown.log');
     const toolchain = await createToolBin({
       docker: `
-case "\${6:-}" in
-  -u)
-    printf '999\\n'
+case "\${1:-}" in
+  run)
+    exit 1
     ;;
-  -g)
-    printf '998\\n'
+  compose)
+    exit 0
     ;;
   *)
     printf 'unexpected docker invocation: %s\\n' "$*" >&2
@@ -188,21 +188,24 @@ case "\${6:-}" in
     ;;
 esac
 `,
+      systemctl: `
+exit 0
+`,
+      curl: `
+exit 0
+`,
     });
-    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-docker-'));
-    const chownLog = path.join(root, 'chown.log');
     const result = await runBootstrap(
       {
         CHOWN_LOG_FILE: chownLog,
       },
-      ['--render-only'],
+      [],
       toolchain.binDir,
     );
 
-    expect(result.code, result.stderr).toBe(0);
-    const chownLines = (await readFile(chownLog, 'utf8')).trim().split('\n');
-    expect(chownLines).toContain(`-R 999:998 ${result.installRoot}/seats/codex-home ${result.installRoot}/seats/claude-home ${result.installRoot}/seats/opencode-home ${result.installRoot}/seats/agy-home`);
-    expect(chownLines).toContain(`999:998 ${result.installRoot}/seats/claude-home/.claude.json`);
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain('unable to resolve ptylon uid/gid');
+    await expect(stat(chownLog)).rejects.toThrow();
   });
 
   it('is idempotent and keeps the admin token unless explicitly rotated', { timeout: 10000 }, async () => {
