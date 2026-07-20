@@ -95,7 +95,7 @@ prepare_shell_guard() {
     local bashrc="${home}/.bashrc"
     local bash_profile="${home}/.bash_profile"
     local bash_env="${home}/.bash_env"
-    local guard_line='[ -f /usr/local/bin/seat-guard.sh ] && source /usr/local/bin/seat-guard.sh'
+    local guard_line='[ -f /usr/local/bin/seat-guard.sh ] && source /usr/local/bin/seat-guard.sh && oxi_guard_arm'
 
     install -d -o "$(id -u)" -g "$(id -g)" "${home}" 2>/dev/null || true
 

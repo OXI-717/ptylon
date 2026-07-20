@@ -24,6 +24,8 @@ expect_allow() {
 }
 
 expect_block 'rm -rf /'
+expect_block 'rm -rf "/"'
+expect_block 'rm -rf /*'
 expect_block 'rm -rf $HOME'
 expect_block 'rm -rf ~'
 expect_block ':(){ :|:& };:'
