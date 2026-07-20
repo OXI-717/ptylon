@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { appendAudit } from '@/lib/admin-audit';
+import { loadAdminClients, matchClient, tokenFingerprint } from '@/lib/admin-tokens';
 
 function isLoopback(value: string) {
   const host = value.trim().replace(/^::ffff:/, '');
@@ -6,43 +8,50 @@ function isLoopback(value: string) {
 }
 
 export function verifyAdminRequest(req: NextRequest): NextResponse | null {
-  // By default the admin API is localhost-only (Ptylon's web-console posture): a request
-  // whose x-forwarded-for first hop is non-loopback is rejected. For the oxi-remote-agents
-  // seat model the security boundary is the admin token itself (each seat holds its own), and
-  // the dispatcher reaches the container over the network — so ADMIN_ALLOW_REMOTE=1 drops the
-  // loopback requirement and relies solely on the constant-time token compare below. Left off
-  // by default so existing/upstream deployments keep the stricter localhost posture.
+  const at = Date.now();
+  const route = req.nextUrl.pathname;
+  const method = req.method;
   const allowRemote = process.env.ADMIN_ALLOW_REMOTE === '1' || process.env.ADMIN_ALLOW_REMOTE === 'true';
+
+  const deny = (status: number, error: string, client: string | null, fingerprint: string): NextResponse => {
+    appendAudit({ at, client, fingerprint, method, route, outcome: 'denied' });
+    return NextResponse.json({ error }, { status });
+  };
+
   if (!allowRemote) {
     const forwardedFor = req.headers.get('x-forwarded-for');
     if (forwardedFor) {
       const firstHop = forwardedFor.split(',')[0]?.trim();
       if (firstHop && !isLoopback(firstHop)) {
-        return NextResponse.json({ error: 'Admin API is localhost-only' }, { status: 403 });
+        return deny(403, 'Admin API is localhost-only', null, '');
       }
     }
   }
 
-  const expected = process.env.WEB_CONSOLE_ADMIN_TOKEN || process.env.JWT_SECRET;
-  if (!expected) return NextResponse.json({ error: 'Admin token is not configured' }, { status: 503 });
-  // Token-only remote access makes the token the sole boundary — refuse a weak secret.
-  if (allowRemote && expected.length < 16) {
-    return NextResponse.json(
-      { error: 'ADMIN_ALLOW_REMOTE requires an admin token of at least 16 chars' },
-      { status: 503 },
-    );
+  const clients = loadAdminClients();
+  if (clients.length === 0) {
+    return deny(503, 'Admin token is not configured', null, '');
   }
 
   const headerToken = req.headers.get('x-web-console-admin-token');
   const bearer = req.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1];
   const provided = headerToken || bearer || '';
-  if (provided.length !== expected.length) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const fingerprint = provided ? tokenFingerprint(provided) : '';
+  const client = matchClient(provided, clients, at);
+
+  if (!client) {
+    return deny(401, 'Unauthorized', null, fingerprint);
   }
 
-  let diff = 0;
-  for (let i = 0; i < expected.length; i += 1) {
-    diff |= expected.charCodeAt(i) ^ provided.charCodeAt(i);
+  if (allowRemote && client.token.length < 16) {
+    return deny(
+      503,
+      'ADMIN_ALLOW_REMOTE requires an admin token of at least 16 chars',
+      client.name,
+      fingerprint,
+    );
   }
-  return diff === 0 ? null : NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  appendAudit({ at, client: client.name, fingerprint, method, route, outcome: 'ok' });
+  return null;
 }
