@@ -1,16 +1,17 @@
+import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 
 import { verifyAdminRequest } from '@/lib/admin-auth';
 
-const ADMIN_TOKEN = 'super-secret-admin-token';
+const adminToken = randomUUID();
 
 function makeRequest(headers: HeadersInit = {}) {
   return new NextRequest('http://localhost/api/admin', { headers });
 }
 
 function setAdminEnv({ allowRemote = false }: { allowRemote?: boolean } = {}) {
-  process.env.WEB_CONSOLE_ADMIN_TOKEN = ADMIN_TOKEN;
+  process.env.WEB_CONSOLE_ADMIN_TOKEN = adminToken;
   process.env.JWT_SECRET = '';
   if (allowRemote) {
     process.env.ADMIN_ALLOW_REMOTE = '1';
@@ -33,7 +34,7 @@ describe('verifyAdminRequest', () => {
   it('authorizes a correct bearer token from loopback', () => {
     const response = verifyAdminRequest(
       makeRequest({
-        authorization: `Bearer ${ADMIN_TOKEN}`,
+        authorization: `Bearer ${adminToken}`,
       }),
     );
 
@@ -54,7 +55,7 @@ describe('verifyAdminRequest', () => {
   it('rejects a non-loopback x-forwarded-for when ADMIN_ALLOW_REMOTE is off', () => {
     const response = verifyAdminRequest(
       makeRequest({
-        authorization: `Bearer ${ADMIN_TOKEN}`,
+        authorization: `Bearer ${adminToken}`,
         'x-forwarded-for': '203.0.113.42',
       }),
     );
@@ -68,7 +69,7 @@ describe('verifyAdminRequest', () => {
 
     const response = verifyAdminRequest(
       makeRequest({
-        authorization: `Bearer ${ADMIN_TOKEN}`,
+        authorization: `Bearer ${adminToken}`,
         'x-forwarded-for': '203.0.113.42',
       }),
     );
