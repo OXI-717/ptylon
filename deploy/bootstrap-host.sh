@@ -186,6 +186,9 @@ agy_home=${PTYLON_AGY_HOME:-${seats_root}/agy-home}
 for dir in "$codex_home" "$claude_home" "$opencode_home" "$agy_home"; do
   install -d -m 0700 "$dir"
 done
+if [ -L "$claude_json" ]; then
+  fail "PTYLON_CLAUDE_JSON must not be a symlink: $claude_json"
+fi
 if [ ! -e "$claude_json" ]; then
   umask 077
   printf '{}\n' > "$claude_json"
