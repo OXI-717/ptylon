@@ -13,6 +13,7 @@
     "start": "next start",
     "start:ws": "node --env-file=.env server/ws-server.mjs",
     "start:pty": "node --env-file=.env server/pty-daemon.mjs",
+    "test": "vitest run",
     "test:pty-gateway": "node scripts/smoke-pty-gateway.mjs",
     "test:pty-network-policy": "node scripts/test-pty-network-policy.mjs",
     "test:browser-regression": "node scripts/browser-regression.mjs",
@@ -48,6 +49,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "playwright": "1.57.0",
+    "vitest": "^3.2.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
