@@ -249,5 +249,8 @@ describe('deploy/bootstrap-host.sh', () => {
     expect(serviceBlock(rendered, 'app')).toMatch(/mem_limit: 0[\s\S]*oom_score_adj: 0/);
     expect(serviceBlock(rendered, 'ws')).toMatch(/mem_limit: 0[\s\S]*oom_score_adj: 0/);
     expect(serviceBlock(rendered, 'pty')).toMatch(/mem_limit: 0[\s\S]*oom_score_adj: 0/);
+    expect(serviceBlock(rendered, 'pty')).toMatch(/networks: \[ptylon, egress\]/);
+    expect(rendered).not.toMatch(/^\s+networks: \[ptylon, edge\]$/m);
+    expect(rendered).toMatch(/^\s+egress:\s*$/m);
   });
 });
