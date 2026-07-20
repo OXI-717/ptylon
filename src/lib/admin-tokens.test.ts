@@ -15,6 +15,15 @@ describe('loadAdminClients', () => {
     expect(clients).toEqual([{ name: 'default', token: fallbackToken }]);
   });
 
+  it('returns no clients when no admin token is configured', () => {
+    const clients = loadAdminClients({
+      WEB_CONSOLE_ADMIN_TOKEN: '',
+      JWT_SECRET: '',
+    });
+
+    expect(clients).toEqual([]);
+  });
+
   it('parses ADMIN_TOKENS as JSON', () => {
     const token = randomUUID();
 
@@ -25,6 +34,18 @@ describe('loadAdminClients', () => {
     });
 
     expect(clients).toEqual([{ name: 'seat-a', token, expiresAt: 123 }]);
+  });
+
+  it('rejects empty client tokens in ADMIN_TOKENS', () => {
+    const fallbackToken = randomUUID();
+
+    const clients = loadAdminClients({
+      ADMIN_TOKENS: JSON.stringify([{ name: 'seat-a', token: '' }]),
+      WEB_CONSOLE_ADMIN_TOKEN: fallbackToken,
+      JWT_SECRET: '',
+    });
+
+    expect(clients).toEqual([{ name: 'default', token: fallbackToken }]);
   });
 });
 
@@ -46,6 +67,12 @@ describe('matchClient', () => {
     });
     expect(matchClient(expiredToken, clients, nowMs)).toBeNull();
     expect(matchClient(randomUUID(), clients, nowMs)).toBeNull();
+  });
+
+  it('rejects empty provided tokens', () => {
+    const clients = [{ name: 'active', token: randomUUID() }];
+
+    expect(matchClient('', clients, Date.now())).toBeNull();
   });
 });
 
