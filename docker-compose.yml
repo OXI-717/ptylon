@@ -65,6 +65,7 @@ services:
     networks: [edge, ptylon]
 
   pty:
+    # PTY sessions stay isolated from app/ws on ptylon; outbound engine egress uses a separate bridge network.
     image: ptylon:local
     pull_policy: never
     restart: unless-stopped
@@ -92,7 +93,7 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
-    networks: [ptylon]
+    networks: [ptylon, egress]
 
 volumes:
   ptylon-data:
@@ -102,3 +103,4 @@ networks:
   edge:
   ptylon:
     internal: true
+  egress:
