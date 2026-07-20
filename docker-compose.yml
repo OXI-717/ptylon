@@ -1,4 +1,4 @@
-name: ptylon
+name: ${COMPOSE_PROJECT_NAME:-ptylon}
 
 services:
   app:
@@ -7,6 +7,8 @@ services:
       dockerfile: deploy/Dockerfile
     image: ptylon:local
     restart: unless-stopped
+    mem_limit: ${PTYLON_MEM_APP:-0}
+    oom_score_adj: ${PTYLON_OOM_ADJ:-0}
     environment:
       AUTH_PASSWORD: ${AUTH_PASSWORD:?set AUTH_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
@@ -39,6 +41,8 @@ services:
     image: ptylon:local
     pull_policy: never
     restart: unless-stopped
+    mem_limit: ${PTYLON_MEM_WS:-0}
+    oom_score_adj: ${PTYLON_OOM_ADJ:-0}
     command: ["node", "server/ws-server.mjs"]
     environment:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
@@ -62,6 +66,8 @@ services:
     image: ptylon:local
     pull_policy: never
     restart: unless-stopped
+    mem_limit: ${PTYLON_MEM_PTY:-0}
+    oom_score_adj: ${PTYLON_OOM_ADJ:-0}
     command: ["node", "server/pty-daemon.mjs"]
     environment:
       PTY_DAEMON_HOST: 0.0.0.0

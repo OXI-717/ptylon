@@ -9,6 +9,22 @@ const repoRoot = path.resolve(__dirname, '..');
 const script = path.join(__dirname, 'bootstrap-host.sh');
 const composePath = path.join(repoRoot, 'docker-compose.yml');
 
+async function renderCompose(env: Record<string, string> = {}) {
+  const composeText = await readFile(composePath, 'utf8');
+  return composeText.replace(/\$\{([A-Z0-9_]+):-([^}]+)\}/g, (_match, key: string, fallback: string) => {
+    return env[key] ?? fallback;
+  });
+}
+
+function serviceBlock(composeText: string, service: 'app' | 'ws' | 'pty') {
+  const nextService = service === 'app' ? 'ws' : service === 'ws' ? 'pty' : null;
+  const start = composeText.indexOf(`  ${service}:\n`);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const end = nextService ? composeText.indexOf(`\n  ${nextService}:\n`, start + 1) : composeText.indexOf('\nvolumes:', start + 1);
+  expect(end).toBeGreaterThan(start);
+  return composeText.slice(start, end);
+}
+
 async function runBootstrap(extraEnv: Record<string, string> = {}, args: string[] = ['--render-only']) {
   const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-'));
   const installRoot = path.join(root, 'install');
@@ -55,6 +71,11 @@ describe('deploy/bootstrap-host.sh', () => {
 
     expect(envText).toContain('ENGINES="codex claude opencode agy"');
     expect(envText).toContain(`WEB_CONSOLE_ADMIN_TOKEN=${token}`);
+    expect(envText).toContain('COMPOSE_PROJECT_NAME=autopilot');
+    expect(envText).toContain('PTYLON_MEM_APP=512m');
+    expect(envText).toContain('PTYLON_MEM_WS=256m');
+    expect(envText).toContain('PTYLON_MEM_PTY=1g');
+    expect(envText).toContain('PTYLON_OOM_ADJ=500');
     expect(envText).toContain('PTYLON_APP_PORT=8790');
     expect(envText).toContain('PTYLON_WS_PORT=8791');
     expect(envText).toContain(`PTYLON_CODEX_HOME=${result.installRoot}/seats/codex-home`);
@@ -126,6 +147,24 @@ describe('deploy/bootstrap-host.sh', () => {
     expect(await readFile(envPath, 'utf8')).toContain('AUTH_PASSWORD="pass\\"with\\\\slashes"');
   });
 
+  it('allows bootstrap resource defaults to be overridden by env', async () => {
+    const result = await runBootstrap({
+      COMPOSE_PROJECT_NAME: 'custom-project',
+      PTYLON_MEM_APP: '768m',
+      PTYLON_MEM_WS: '384m',
+      PTYLON_MEM_PTY: '2g',
+      PTYLON_OOM_ADJ: '650',
+    });
+
+    expect(result.code, result.stderr).toBe(0);
+    const envText = await readFile(path.join(result.installRoot, '.env'), 'utf8');
+    expect(envText).toContain('COMPOSE_PROJECT_NAME=custom-project');
+    expect(envText).toContain('PTYLON_MEM_APP=768m');
+    expect(envText).toContain('PTYLON_MEM_WS=384m');
+    expect(envText).toContain('PTYLON_MEM_PTY=2g');
+    expect(envText).toContain('PTYLON_OOM_ADJ=650');
+  });
+
   it('fails closed when AUTH_PASSWORD is missing', async () => {
     const result = await runBootstrap({ AUTH_PASSWORD: '' });
 
@@ -139,5 +178,29 @@ describe('deploy/bootstrap-host.sh', () => {
     expect(composeText).toMatch(/app:[\s\S]*ENGINES: \${ENGINES:-codex}/);
     expect(composeText).toContain('${PTYLON_OPENCODE_HOME:-/opt/ptylon/seats/opencode-home}:/home/ptylon/.local');
     expect(composeText).toContain('${PTYLON_CLAUDE_JSON:-/opt/ptylon/seats/claude-home/.claude.json}:/home/ptylon/.claude.json');
+  });
+
+  it('renders shared-host compose memory limits, OOM guard, and project name from env', async () => {
+    const rendered = await renderCompose({
+      COMPOSE_PROJECT_NAME: 'autopilot',
+      PTYLON_MEM_APP: '512m',
+      PTYLON_MEM_WS: '256m',
+      PTYLON_MEM_PTY: '1g',
+      PTYLON_OOM_ADJ: '500',
+    });
+
+    expect(rendered).toMatch(/^name: autopilot$/m);
+    expect(serviceBlock(rendered, 'app')).toMatch(/mem_limit: 512m[\s\S]*oom_score_adj: 500/);
+    expect(serviceBlock(rendered, 'ws')).toMatch(/mem_limit: 256m[\s\S]*oom_score_adj: 500/);
+    expect(serviceBlock(rendered, 'pty')).toMatch(/mem_limit: 1g[\s\S]*oom_score_adj: 500/);
+  });
+
+  it('renders local compose defaults as unlimited memory, neutral OOM score, and ptylon project', async () => {
+    const rendered = await renderCompose();
+
+    expect(rendered).toMatch(/^name: ptylon$/m);
+    expect(serviceBlock(rendered, 'app')).toMatch(/mem_limit: 0[\s\S]*oom_score_adj: 0/);
+    expect(serviceBlock(rendered, 'ws')).toMatch(/mem_limit: 0[\s\S]*oom_score_adj: 0/);
+    expect(serviceBlock(rendered, 'pty')).toMatch(/mem_limit: 0[\s\S]*oom_score_adj: 0/);
   });
 });
