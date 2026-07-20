@@ -80,6 +80,10 @@ services:
       PTY_IDLE_TIMEOUT_HOURS: ${PTY_IDLE_TIMEOUT_HOURS:-168}
       ENGINES: ${ENGINES:-codex}
       INSTALL_ENGINES: ${INSTALL_ENGINES:-0}
+      # opencode config (~/.config) is not a persistent mount, so prepare_opencode_seat rewrites
+      # opencode.json on every boot from these — they must reach the container, not just compose.
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-}
+      OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-}
     volumes:
       - ptylon-workspace:/workspace
       - ${PTYLON_CODEX_HOME:-/opt/ptylon/seats/codex-home}:/home/ptylon/.codex
