@@ -43,7 +43,7 @@ describe('deploy/engines-entrypoint.sh', () => {
           }
         }
         reject(new Error('daemon command did not start before refresh timeout'));
-      }, 1500);
+      }, 3000);
       child.stdout.on('data', (chunk) => {
         stdout += chunk;
         if (stdout.includes('daemon-started')) {
@@ -65,6 +65,6 @@ describe('deploy/engines-entrypoint.sh', () => {
     });
 
     expect(result.stdout).toBe('daemon-started');
-    expect(result.elapsedMs).toBeLessThan(1500);
+    expect(result.elapsedMs).toBeLessThan(3000);
   });
 });

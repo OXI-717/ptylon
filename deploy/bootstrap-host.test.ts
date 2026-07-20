@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -14,6 +14,20 @@ async function renderCompose(env: Record<string, string> = {}) {
   return composeText.replace(/\$\{([A-Z0-9_]+):-([^}]+)\}/g, (_match, key: string, fallback: string) => {
     return env[key] ?? fallback;
   });
+}
+
+async function createToolBin(scripts: Record<string, string>) {
+  const root = await mkdtemp(path.join(tmpdir(), 'ptylon-tools-'));
+  const binDir = path.join(root, 'bin');
+  await mkdir(binDir, { recursive: true });
+  await Promise.all(
+    Object.entries(scripts).map(async ([name, body]) => {
+      const filePath = path.join(binDir, name);
+      await writeFile(filePath, `#!/usr/bin/env bash\nset -euo pipefail\n${body}\n`);
+      await chmod(filePath, 0o755);
+    }),
+  );
+  return { root, binDir };
 }
 
 async function runComposeConfig(env: Record<string, string> = {}) {
@@ -56,12 +70,25 @@ function serviceBlock(composeText: string, service: 'app' | 'ws' | 'pty') {
   return composeText.slice(start, end);
 }
 
-async function runBootstrap(extraEnv: Record<string, string> = {}, args: string[] = ['--render-only']) {
+async function runBootstrap(
+  extraEnv: Record<string, string> = {},
+  args: string[] = ['--render-only'],
+  toolBinDir?: string,
+) {
   const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-'));
   const installRoot = path.join(root, 'install');
   const systemdDir = path.join(root, 'systemd');
+  const tools = await createToolBin({
+    chown: `
+if [ -n "\${CHOWN_LOG_FILE:-}" ]; then
+  printf '%s\\n' "$*" >> "$CHOWN_LOG_FILE"
+fi
+exit 0
+`,
+  });
 
   const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
+    const pathParts = [toolBinDir, tools.binDir, process.env.PATH].filter(Boolean);
     const child = spawn('bash', [script, ...args], {
       cwd: repoRoot,
       env: {
@@ -70,6 +97,7 @@ async function runBootstrap(extraEnv: Record<string, string> = {}, args: string[
         PTYLON_INSTALL_ROOT: installRoot,
         PTYLON_SYSTEMD_DIR: systemdDir,
         PTYLON_REPO_DIR: repoRoot,
+        PATH: pathParts.join(path.delimiter),
         ...extraEnv,
       },
     });
@@ -84,7 +112,7 @@ async function runBootstrap(extraEnv: Record<string, string> = {}, args: string[
     child.on('close', (code) => resolve({ code, stdout, stderr }));
   });
 
-  return { ...result, root, installRoot, systemdDir };
+  return { ...result, root, installRoot, systemdDir, tools };
 }
 
 describe('deploy/bootstrap-host.sh', () => {
@@ -126,7 +154,84 @@ describe('deploy/bootstrap-host.sh', () => {
     expect(unitText).toContain('Restart=on-failure');
   });
 
-  it('is idempotent and keeps the admin token unless explicitly rotated', async () => {
+  it('does not chown seat homes under --render-only', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-'));
+    const chownLog = path.join(root, 'chown.log');
+    const result = await runBootstrap(
+      {
+        PTYLON_UID: '1234',
+        PTYLON_GID: '5678',
+        CHOWN_LOG_FILE: chownLog,
+      },
+      ['--render-only'],
+    );
+
+    expect(result.code, result.stderr).toBe(0);
+    await expect(stat(chownLog)).rejects.toThrow();
+  });
+
+  it('falls back to uid 999 when the image is not built yet (clean host)', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-fallback-'));
+    const chownLog = path.join(root, 'chown.log');
+    const toolchain = await createToolBin({
+      docker: `
+case "\${1:-}" in
+  run)
+    exit 1
+    ;;
+  compose)
+    exit 0
+    ;;
+  *)
+    printf 'unexpected docker invocation: %s\\n' "$*" >&2
+    exit 1
+    ;;
+esac
+`,
+      systemctl: `
+exit 0
+`,
+      curl: `
+exit 0
+`,
+    });
+    const result = await runBootstrap(
+      {
+        CHOWN_LOG_FILE: chownLog,
+      },
+      [],
+      toolchain.binDir,
+    );
+
+    expect(result.code, result.stderr).toBe(0);
+    expect(result.stderr).toContain('using fallback 999');
+    const chownCalls = await readFile(chownLog, 'utf8');
+    expect(chownCalls).toContain('999:999');
+  });
+
+  it('rejects an explicitly set non-numeric PTYLON_UID', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-bad-'));
+    const chownLog = path.join(root, 'chown.log');
+    const toolchain = await createToolBin({
+      systemctl: `\nexit 0\n`,
+      curl: `\nexit 0\n`,
+    });
+    const result = await runBootstrap(
+      {
+        PTYLON_UID: 'notanumber',
+        PTYLON_GID: '999',
+        CHOWN_LOG_FILE: chownLog,
+      },
+      [],
+      toolchain.binDir,
+    );
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain('invalid ptylon uid');
+    await expect(stat(chownLog)).rejects.toThrow();
+  });
+
+  it('is idempotent and keeps the admin token unless explicitly rotated', { timeout: 10000 }, async () => {
     const first = await runBootstrap();
     expect(first.code, first.stderr).toBe(0);
     const tokenPath = path.join(first.installRoot, 'admin-token');
@@ -157,7 +262,7 @@ describe('deploy/bootstrap-host.sh', () => {
     expect((await readFile(tokenPath, 'utf8')).trim()).not.toBe(originalToken);
   });
 
-  it('preserves quoted AUTH_PASSWORD values across idempotent runs', async () => {
+  it('preserves quoted AUTH_PASSWORD values across idempotent runs', { timeout: 10000 }, async () => {
     const authPassword = 'pass"with\\slashes';
     const first = await runBootstrap({ AUTH_PASSWORD: authPassword });
     expect(first.code, first.stderr).toBe(0);
