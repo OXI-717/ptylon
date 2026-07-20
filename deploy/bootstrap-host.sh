@@ -57,13 +57,27 @@ require_command() {
 read_env_value() {
   local key="$1"
   [ -f "$env_file" ] || return 0
-  local line value
+  local line value out i char next
   line=$(grep -E "^${key}=" "$env_file" | tail -n 1 || true)
   [ -n "$line" ] || return 0
   value=${line#*=}
   value=${value%$'\r'}
   if [[ "$value" == \"*\" && "$value" == *\" ]]; then
     value=${value:1:${#value}-2}
+    out=
+    for ((i = 0; i < ${#value}; i++)); do
+      char=${value:i:1}
+      if [ "$char" = "\\" ] && [ $((i + 1)) -lt ${#value} ]; then
+        next=${value:i+1:1}
+        if [ "$next" = "\\" ] || [ "$next" = '"' ]; then
+          out+="$next"
+          i=$((i + 1))
+          continue
+        fi
+      fi
+      out+="$char"
+    done
+    value=$out
   fi
   printf '%s' "$value"
 }
@@ -118,11 +132,18 @@ install -d -m 0755 "$systemd_dir"
 
 codex_home=${PTYLON_CODEX_HOME:-${seats_root}/codex-home}
 claude_home=${PTYLON_CLAUDE_HOME:-${seats_root}/claude-home}
+claude_json=${PTYLON_CLAUDE_JSON:-${claude_home}/.claude.json}
 opencode_home=${PTYLON_OPENCODE_HOME:-${seats_root}/opencode-home}
 agy_home=${PTYLON_AGY_HOME:-${seats_root}/agy-home}
 for dir in "$codex_home" "$claude_home" "$opencode_home" "$agy_home"; do
   install -d -m 0700 "$dir"
 done
+if [ ! -e "$claude_json" ]; then
+  umask 077
+  printf '{}\n' > "$claude_json"
+fi
+[ -f "$claude_json" ] || fail "PTYLON_CLAUDE_JSON must be a file: $claude_json"
+chmod 0600 "$claude_json"
 
 if [ -f "$token_file" ] && [ "$rotate_token" -eq 0 ]; then
   admin_token=$(tr -d '\r\n' < "$token_file")
@@ -150,6 +171,7 @@ PTYLON_WS_BIND=$ws_bind
 PTYLON_WS_PORT=$ws_port
 PTYLON_CODEX_HOME=$codex_home
 PTYLON_CLAUDE_HOME=$claude_home
+PTYLON_CLAUDE_JSON=$claude_json
 PTYLON_OPENCODE_HOME=$opencode_home
 PTYLON_AGY_HOME=$agy_home
 PTY_IDLE_TIMEOUT_HOURS=168

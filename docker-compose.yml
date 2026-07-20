@@ -11,6 +11,7 @@ services:
       AUTH_PASSWORD: ${AUTH_PASSWORD:?set AUTH_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       WEB_CONSOLE_ADMIN_TOKEN: ${WEB_CONSOLE_ADMIN_TOKEN:?set WEB_CONSOLE_ADMIN_TOKEN in .env}
+      ENGINES: ${ENGINES:-codex}
       PORT: 8790
       WS_PORT: 8791
       NEXT_PUBLIC_WS_PORT: 8791
@@ -74,7 +75,8 @@ services:
       - ptylon-workspace:/workspace
       - ${PTYLON_CODEX_HOME:-/opt/ptylon/seats/codex-home}:/home/ptylon/.codex
       - ${PTYLON_CLAUDE_HOME:-/opt/ptylon/seats/claude-home}:/home/ptylon/.claude
-      - ${PTYLON_OPENCODE_HOME:-/opt/ptylon/seats/opencode-home}:/home/ptylon/.config/opencode
+      - ${PTYLON_CLAUDE_JSON:-/opt/ptylon/seats/claude-home/.claude.json}:/home/ptylon/.claude.json
+      - ${PTYLON_OPENCODE_HOME:-/opt/ptylon/seats/opencode-home}:/home/ptylon/.local
       - ${PTYLON_AGY_HOME:-/opt/ptylon/seats/agy-home}:/home/ptylon/.gemini
     healthcheck:
       test: ["CMD", "node", "-e", "require('net').connect(8792, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"]
