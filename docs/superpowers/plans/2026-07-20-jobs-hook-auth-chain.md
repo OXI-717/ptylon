@@ -14,6 +14,7 @@
 - Constant-time comparison for every token check (`node:crypto` `timingSafeEqual`). Never log a token value — audit records a client *label* + a masked SHA-256 fingerprint (`first4…last4`), never the secret.
 - All new files are TypeScript under `src/lib/` or `src/app/api/admin/`; tests are colocated `*.test.ts` run by vitest.
 - Do not touch generated files, `node_modules`, or the engine launch specs in `src/lib/jobs.ts` ENGINES map.
+- **In tests, generate token values with `randomUUID()` (`node:crypto`) — NEVER hardcode an opaque token/secret string literal.** The push-time secret-leak gate fails closed on any `token = "<opaque literal>"` / `secret = "<opaque literal>"` and will block the PR. A `randomUUID()` call is a code expression, not a literal, so it passes. (This is why the existing `admin-auth.test.ts` uses `const adminToken = randomUUID()`.)
 - Every task ends green: `pnpm test` (vitest) passes and `pnpm build` (typecheck) succeeds.
 
 ---
@@ -35,32 +36,38 @@
 
 ```ts
 import { describe, it, expect } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { loadAdminClients, matchClient, tokenFingerprint } from '@/lib/admin-tokens';
+
+// Generated, never hardcoded — the push secret-leak gate blocks opaque token literals.
+const tokDefault = randomUUID();
+const tokA = randomUUID();
+const tokB = randomUUID();
 
 describe('admin-tokens', () => {
   it('falls back to single default token from WEB_CONSOLE_ADMIN_TOKEN', () => {
-    const clients = loadAdminClients({ WEB_CONSOLE_ADMIN_TOKEN: 'abc1234567890xyz' } as NodeJS.ProcessEnv);
-    expect(clients).toEqual([{ name: 'default', token: 'abc1234567890xyz' }]);
+    const clients = loadAdminClients({ WEB_CONSOLE_ADMIN_TOKEN: tokDefault } as NodeJS.ProcessEnv);
+    expect(clients).toEqual([{ name: 'default', token: tokDefault }]);
   });
 
   it('parses ADMIN_TOKENS json array', () => {
-    const env = { ADMIN_TOKENS: JSON.stringify([{ name: 'seat-a', token: 'tok-a-1234567890' }, { name: 'seat-b', token: 'tok-b-1234567890', expiresAt: 111 }]) } as NodeJS.ProcessEnv;
+    const env = { ADMIN_TOKENS: JSON.stringify([{ name: 'seat-a', token: tokA }, { name: 'seat-b', token: tokB, expiresAt: 111 }]) } as NodeJS.ProcessEnv;
     const clients = loadAdminClients(env);
     expect(clients.map((c) => c.name)).toEqual(['seat-a', 'seat-b']);
   });
 
   it('matchClient returns the client on exact token, respecting expiry', () => {
-    const clients = [{ name: 'seat-a', token: 'tok-a-1234567890' }, { name: 'seat-b', token: 'tok-b-1234567890', expiresAt: 100 }];
-    expect(matchClient('tok-a-1234567890', clients, 50)?.name).toBe('seat-a');
-    expect(matchClient('tok-b-1234567890', clients, 50)?.name).toBe('seat-b');
-    expect(matchClient('tok-b-1234567890', clients, 150)).toBeNull();
-    expect(matchClient('wrong', clients, 50)).toBeNull();
+    const clients = [{ name: 'seat-a', token: tokA }, { name: 'seat-b', token: tokB, expiresAt: 100 }];
+    expect(matchClient(tokA, clients, 50)?.name).toBe('seat-a');
+    expect(matchClient(tokB, clients, 50)?.name).toBe('seat-b');
+    expect(matchClient(tokB, clients, 150)).toBeNull();
+    expect(matchClient(randomUUID(), clients, 50)).toBeNull();
   });
 
   it('tokenFingerprint masks the middle and never returns the raw token', () => {
-    const fp = tokenFingerprint('supersecrettoken');
+    const fp = tokenFingerprint(tokA);
     expect(fp).toMatch(/^[0-9a-f]{4}…[0-9a-f]{4}$/);
-    expect(fp).not.toContain('supersecret');
+    expect(fp).not.toContain(tokA);
   });
 });
 ```
@@ -268,7 +275,7 @@ export function verifyAdminRequest(req: NextRequest): NextResponse | null {
 
 - [ ] **Step 6: Extend `src/lib/admin-auth.test.ts` with registry + audit cases**
 
-Add a describe block: set `ADMIN_TOKENS` to two clients (one with a past `expiresAt`), assert a request bearing the live client's token authorizes and the expired one → 401; point `ADMIN_AUDIT_LOG` at a temp file in `beforeEach` and assert an `ok`/`denied` line is written. Keep the existing single-token cases green (fallback path). Clean up env in `afterEach`.
+Add a describe block: generate two tokens with `randomUUID()` (never hardcode), set `ADMIN_TOKENS` to two clients (one with a past `expiresAt`), assert a request bearing the live client's token authorizes and the expired one → 401; point `ADMIN_AUDIT_LOG` at a temp file in `beforeEach` and assert an `ok`/`denied` line is written. Keep the existing single-token cases green (fallback path). Clean up env in `afterEach`.
 
 - [ ] **Step 7: Run all tests + typecheck**
 
