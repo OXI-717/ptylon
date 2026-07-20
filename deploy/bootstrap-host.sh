@@ -18,6 +18,11 @@ Environment:
   PTYLON_APP_PORT        Default: 8790
   PTYLON_WS_BIND         Default: 127.0.0.1
   PTYLON_WS_PORT         Default: 8791
+  COMPOSE_PROJECT_NAME   Default: autopilot
+  PTYLON_MEM_APP         Default: 512m
+  PTYLON_MEM_WS          Default: 256m
+  PTYLON_MEM_PTY         Default: 1g
+  PTYLON_OOM_ADJ         Default: 500
 EOF
 }
 
@@ -42,10 +47,15 @@ env_file=${PTYLON_ENV_FILE:-${install_root}/.env}
 token_file=${PTYLON_ADMIN_TOKEN_FILE:-${install_root}/admin-token}
 seats_root=${PTYLON_SEATS_ROOT:-${install_root}/seats}
 engines=${ENGINES:-codex claude opencode agy}
+compose_project_name=${COMPOSE_PROJECT_NAME:-autopilot}
 app_bind=${PTYLON_APP_BIND:-127.0.0.1}
 app_port=${PTYLON_APP_PORT:-8790}
 ws_bind=${PTYLON_WS_BIND:-127.0.0.1}
 ws_port=${PTYLON_WS_PORT:-8791}
+mem_app=${PTYLON_MEM_APP:-512m}
+mem_ws=${PTYLON_MEM_WS:-256m}
+mem_pty=${PTYLON_MEM_PTY:-1g}
+oom_adj=${PTYLON_OOM_ADJ:-500}
 smoke_retries=${PTYLON_SMOKE_RETRIES:-30}
 smoke_delay=${PTYLON_SMOKE_DELAY:-2}
 smoke_timeout=${PTYLON_SMOKE_TIMEOUT:-5}
@@ -165,10 +175,15 @@ JWT_SECRET=$jwt_secret
 WEB_CONSOLE_ADMIN_TOKEN=$admin_token
 ENGINES=$(quote_env "$engines")
 INSTALL_ENGINES=1
+COMPOSE_PROJECT_NAME=$compose_project_name
 PTYLON_APP_BIND=$app_bind
 PTYLON_APP_PORT=$app_port
 PTYLON_WS_BIND=$ws_bind
 PTYLON_WS_PORT=$ws_port
+PTYLON_MEM_APP=$mem_app
+PTYLON_MEM_WS=$mem_ws
+PTYLON_MEM_PTY=$mem_pty
+PTYLON_OOM_ADJ=$oom_adj
 PTYLON_CODEX_HOME=$codex_home
 PTYLON_CLAUDE_HOME=$claude_home
 PTYLON_CLAUDE_JSON=$claude_json
