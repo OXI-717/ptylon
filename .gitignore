@@ -44,4 +44,7 @@ data/
 
 # local verify override (codex-auth mount, single-network hack) — not for upstream
 docker-compose.override.yml
+.worktrees/
 .task-runner/
+admin-token
+seats/
