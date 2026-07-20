@@ -118,7 +118,7 @@ oxi_guard_trap() {
 
     if ! oxi_guard_check "$cmd"; then
         printf '[seat-guard] blocked: %s\n' "$cmd" >&2
-        return 1
+        exit 1
     fi
 
     return 0
