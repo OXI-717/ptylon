@@ -18,6 +18,8 @@ RUN pnpm build && pnpm prune --prod
 
 FROM node:22-bookworm-slim AS runtime
 
+ARG TARGETARCH
+
 # Base runtime + a common toolbox the coding-agent engines expect for real work: python3
 # (with pip/venv + build tooling for C-extensions), plus the everyday CLIs agents reach for
 # (curl/wget/jq/ripgrep/less/ps/unzip/ssh). Keep --no-install-recommends to bound image size.
@@ -42,11 +44,17 @@ ENV NPM_CONFIG_PREFIX=/home/ptylon/.npm-global \
 # Baked baselines for all three engines so a boot-time refresh flap never leaves an engine
 # missing. codex/claude via npm; opencode via its platform package (npm wrapper is broken) with
 # an `opencode` symlink at the real binary. The boot entrypoint refreshes each to @latest.
-RUN install -d -o ptylon -g ptylon /home/ptylon/.npm-global \
-  && su ptylon -s /bin/bash -c '\
+RUN set -eu; \
+  case "${TARGETARCH:-$(uname -m)}" in \
+    amd64|x86_64) opencode_package="opencode-linux-x64" ;; \
+    arm64|aarch64) opencode_package="opencode-linux-arm64" ;; \
+    *) echo "unsupported opencode target architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
+  esac; \
+  install -d -o ptylon -g ptylon /home/ptylon/.npm-global \
+  && su ptylon -s /bin/bash -c "\
        npm install -g --no-fund --no-audit \
-         @openai/codex@latest @anthropic-ai/claude-code@latest opencode-linux-arm64@latest \
-       && ln -sf "$(npm root -g)/opencode-linux-arm64/bin/opencode" /home/ptylon/.npm-global/bin/opencode'
+         @openai/codex@latest @anthropic-ai/claude-code@latest ${opencode_package}@latest \
+       && ln -sf \"\$(npm root -g)/${opencode_package}/bin/opencode\" /home/ptylon/.npm-global/bin/opencode"
 
 COPY --chmod=755 deploy/engines-entrypoint.sh /usr/local/bin/engines-entrypoint.sh
 
