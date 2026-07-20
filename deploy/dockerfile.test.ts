@@ -16,4 +16,17 @@ describe('deploy/Dockerfile', () => {
     expect(dockerfile).toContain('${opencode_package}@latest');
     expect(dockerfile).toContain('$(npm root -g)/${opencode_package}/bin/opencode');
   });
+
+  it('bakes the agy baseline for linux amd64 and arm64 images', async () => {
+    const dockerfile = await readFile(dockerfilePath, 'utf8');
+
+    expect(dockerfile).toMatch(/amd64\|x86_64\)[\s\S]*agy_platform="linux_amd64"/);
+    expect(dockerfile).toMatch(/arm64\|aarch64\)[\s\S]*agy_platform="linux_arm64"/);
+    expect(dockerfile).toContain('https://antigravity-cli-auto-updater-974169037036.us-central1.run.app');
+    expect(dockerfile).toContain('/manifests/${agy_platform}.json');
+    expect(dockerfile).toContain('sha512sum -c -');
+    expect(dockerfile).toContain('*.tar.gz*) tar -xzf /tmp/agy-payload -C /tmp antigravity');
+    expect(dockerfile).toContain('/home/ptylon/.local/bin/agy');
+    expect(dockerfile).toContain('/home/ptylon/.npm-global/bin/agy');
+  });
 });
