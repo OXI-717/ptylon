@@ -49,6 +49,7 @@ RUN install -d -o ptylon -g ptylon /home/ptylon/.npm-global \
        && ln -sf "$(npm root -g)/opencode-linux-arm64/bin/opencode" /home/ptylon/.npm-global/bin/opencode'
 
 COPY --chmod=755 deploy/engines-entrypoint.sh /usr/local/bin/engines-entrypoint.sh
+COPY --chmod=755 deploy/seat-guard.sh /usr/local/bin/seat-guard.sh
 
 WORKDIR /app
 

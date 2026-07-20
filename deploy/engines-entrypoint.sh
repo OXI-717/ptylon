@@ -90,10 +90,33 @@ json.dump(c, open(cp, "w"), indent=2)
 PY
 }
 
+prepare_shell_guard() {
+    local home="${HOME:-/home/ptylon}"
+    local bashrc="${home}/.bashrc"
+    local bash_profile="${home}/.bash_profile"
+    local bash_env="${home}/.bash_env"
+    local guard_line='[ -f /usr/local/bin/seat-guard.sh ] && source /usr/local/bin/seat-guard.sh'
+
+    install -d -o "$(id -u)" -g "$(id -g)" "${home}" 2>/dev/null || true
+
+    if ! grep -Fqx "$guard_line" "$bashrc" 2>/dev/null; then
+        printf '%s\n' "$guard_line" >> "$bashrc"
+    fi
+
+    if ! grep -Fqx '[ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc"' "$bash_profile" 2>/dev/null; then
+        printf '%s\n' '[ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc"' >> "$bash_profile"
+    fi
+
+    printf '%s\n' "$guard_line" > "$bash_env"
+    export BASH_ENV="$bash_env"
+    log "seat guard armed via ${bashrc} and BASH_ENV=${bash_env}"
+}
+
 if [ "${INSTALL_ENGINES:-0}" = "1" ] || [ "${INSTALL_ENGINES:-}" = "true" ]; then
     for engine in ${ENGINES:-codex}; do
         install_engine "${engine}"
     done
+    prepare_shell_guard
     case " ${ENGINES:-codex} " in *" claude "*|*" agy "*) prepare_claude_seat ;; esac
     printf '{"engines":"%s","refreshed_at":"%s"}\n' \
         "${ENGINES:-codex}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
