@@ -41,12 +41,30 @@ refresh_opencode() {
     fi
 }
 
+# agy (Antigravity CLI) is a single Go binary, not an npm package: install via the official
+# bootstrapper, which resolves platform (linux_arm64 etc.), verifies the checksum, and drops the
+# binary into ~/.local/bin/agy. Auth is the mounted ~/.gemini/antigravity-cli/antigravity-oauth-token
+# (file-based token is sufficient — no system keyring in the container).
+refresh_agy() {
+    log "refreshing agy (antigravity.google installer)"
+    local bin="${HOME:-/home/ptylon}/.local/bin/agy"
+    if curl -fsSL --max-time 120 https://antigravity.google/cli/install.sh | bash >&2; then
+        log "agy refreshed to $("${bin}" --version 2>/dev/null | head -1 || echo '?')"
+    else
+        log "WARN: agy refresh failed (network?); keeping existing binary if any"
+    fi
+    # ~/.local/bin is not on the image PATH; expose agy through the npm prefix bin
+    # (same trick as the opencode symlink) so non-interactive shells find it too.
+    [ -x "${bin}" ] && ln -sf "${bin}" "${NPM_CONFIG_PREFIX:-/usr/local}/bin/agy"
+}
+
 install_engine() {
     local engine="$1" pkg
     case "${engine}" in
         codex)    pkg="@openai/codex@latest" ;;
         claude)   pkg="@anthropic-ai/claude-code@latest" ;;
         opencode) refresh_opencode; return 0 ;;
+        agy)      refresh_agy; return 0 ;;
         *) log "unknown engine '${engine}', skipping"; return 0 ;;
     esac
     log "refreshing ${engine} (${pkg}) into ${NPM_CONFIG_PREFIX:-npm default}"
@@ -90,11 +108,46 @@ json.dump(c, open(cp, "w"), indent=2)
 PY
 }
 
+# agy first-run shows an interactive onboarding wizard (color scheme + ToS) and then a
+# folder-trust dialog — both swallow any injected prompt. Declaratively write the two state
+# files agy itself persists after clicking through (cache/onboarding.json + settings.json
+# trustedWorkspaces), so the TUI boots straight to the prompt. Idempotent; never touches
+# credentials (auth = mounted ~/.gemini/antigravity-cli/antigravity-oauth-token).
+prepare_agy_seat() {
+    local root="${HOME:-/home/ptylon}/.gemini/antigravity-cli" ws="${WORKSPACE_ROOT:-/workspace}"
+    command -v python3 >/dev/null 2>&1 || { log "python3 missing; skipping agy seat prep"; return 0; }
+    python3 - "$root" "$ws" <<'PY' && log "agy seat prepared (onboarding complete + trust ${ws})" || log "WARN: agy seat prep failed"
+import json, os, sys
+root, ws = sys.argv[1], sys.argv[2]
+# cache/onboarding.json: skip the color-scheme + ToS wizard.
+op = os.path.join(root, "cache", "onboarding.json")
+os.makedirs(os.path.dirname(op), exist_ok=True)
+try:
+    o = json.load(open(op))
+except Exception:
+    o = {}
+o.setdefault("consumerOnboardingComplete", True)
+o["onboardingComplete"] = True
+json.dump(o, open(op, "w"), indent=2)
+# settings.json: trust the workspace folder.
+sp = os.path.join(root, "settings.json")
+try:
+    s = json.load(open(sp))
+except Exception:
+    s = {}
+tw = s.setdefault("trustedWorkspaces", [])
+if ws not in tw:
+    tw.append(ws)
+json.dump(s, open(sp, "w"), indent=2)
+PY
+}
+
 if [ "${INSTALL_ENGINES:-0}" = "1" ] || [ "${INSTALL_ENGINES:-}" = "true" ]; then
     for engine in ${ENGINES:-codex}; do
         install_engine "${engine}"
     done
     case " ${ENGINES:-codex} " in *" claude "*|*" agy "*) prepare_claude_seat ;; esac
+    case " ${ENGINES:-codex} " in *" agy "*) prepare_agy_seat ;; esac
     printf '{"engines":"%s","refreshed_at":"%s"}\n' \
         "${ENGINES:-codex}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         > "${HOME:-/home/ptylon}/.engines-bootstrap.json" 2>/dev/null || true
