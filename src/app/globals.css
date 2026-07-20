@@ -3,6 +3,7 @@
 
 /* Circadian display theme: light/day, warm evening, low-blue night. */
 :root {
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --background: #0a0e14;
   --foreground: #e0e0e0;
   --accent: #40E0D0;

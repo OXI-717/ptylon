@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin", "cyrillic"],
-});
+// next/font/google fetches the font at build time; on a flaky network the build fails. Use a
+// system monospace stack instead so the build is offline-safe (verify-branch robustness).
+const jetbrainsMono = {
+  variable: "font-mono-system",
+} as const;
 
 export const metadata: Metadata = {
   title: "Ptylon — Browser Terminal Workspace",

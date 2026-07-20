@@ -1,0 +1,8 @@
+{
+  "local": {
+    "endpoint": "http://127.0.0.1:8790",
+    "auth_token_ref": "literal:local-verify-token",
+    "deployment_kind": "docker",
+    "engines_available": ["claude", "codex"]
+  }
+}
