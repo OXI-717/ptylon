@@ -17,7 +17,7 @@ services:
       NEXT_PUBLIC_APP_LABEL: Ptylon
       WEB_CONSOLE_ADMIN_WS_URL: ws://ws:8791
     ports:
-      - "${PTYLON_APP_BIND:-127.0.0.1}:8790:8790"
+      - "${PTYLON_APP_BIND:-127.0.0.1}:${PTYLON_APP_PORT:-8790}:8790"
     volumes:
       - ptylon-data:/data
       - ptylon-workspace:/workspace
@@ -45,7 +45,7 @@ services:
       WS_PORT: 8791
       PTY_DAEMON_URL: ws://pty:8792
     ports:
-      - "${PTYLON_WS_BIND:-127.0.0.1}:8791:8791"
+      - "${PTYLON_WS_BIND:-127.0.0.1}:${PTYLON_WS_PORT:-8791}:8791"
     depends_on:
       pty:
         condition: service_healthy
@@ -68,8 +68,14 @@ services:
       PTY_DAEMON_ALLOW_NETWORK: "true"
       WORKSPACE_ROOT: /workspace
       PTY_IDLE_TIMEOUT_HOURS: ${PTY_IDLE_TIMEOUT_HOURS:-168}
+      ENGINES: ${ENGINES:-codex}
+      INSTALL_ENGINES: ${INSTALL_ENGINES:-0}
     volumes:
       - ptylon-workspace:/workspace
+      - ${PTYLON_CODEX_HOME:-/opt/ptylon/seats/codex-home}:/home/ptylon/.codex
+      - ${PTYLON_CLAUDE_HOME:-/opt/ptylon/seats/claude-home}:/home/ptylon/.claude
+      - ${PTYLON_OPENCODE_HOME:-/opt/ptylon/seats/opencode-home}:/home/ptylon/.config/opencode
+      - ${PTYLON_AGY_HOME:-/opt/ptylon/seats/agy-home}:/home/ptylon/.gemini
     healthcheck:
       test: ["CMD", "node", "-e", "require('net').connect(8792, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"]
       interval: 10s

@@ -3,23 +3,25 @@ import { describe, expect, it } from 'vitest';
 
 import { loadAdminClients, matchClient, tokenFingerprint } from '@/lib/admin-tokens';
 
+const env = (values: Record<string, string>) => values as unknown as NodeJS.ProcessEnv;
+
 describe('loadAdminClients', () => {
   it('falls back to the default admin token when ADMIN_TOKENS is unset', () => {
     const fallbackToken = randomUUID();
 
-    const clients = loadAdminClients({
+    const clients = loadAdminClients(env({
       WEB_CONSOLE_ADMIN_TOKEN: fallbackToken,
       JWT_SECRET: '',
-    });
+    }));
 
     expect(clients).toEqual([{ name: 'default', token: fallbackToken }]);
   });
 
   it('returns no clients when no admin token is configured', () => {
-    const clients = loadAdminClients({
+    const clients = loadAdminClients(env({
       WEB_CONSOLE_ADMIN_TOKEN: '',
       JWT_SECRET: '',
-    });
+    }));
 
     expect(clients).toEqual([]);
   });
@@ -27,11 +29,11 @@ describe('loadAdminClients', () => {
   it('parses ADMIN_TOKENS as JSON', () => {
     const token = randomUUID();
 
-    const clients = loadAdminClients({
+    const clients = loadAdminClients(env({
       ADMIN_TOKENS: JSON.stringify([{ name: 'seat-a', token, expiresAt: 123 }]),
       WEB_CONSOLE_ADMIN_TOKEN: '',
       JWT_SECRET: '',
-    });
+    }));
 
     expect(clients).toEqual([{ name: 'seat-a', token, expiresAt: 123 }]);
   });
@@ -39,11 +41,11 @@ describe('loadAdminClients', () => {
   it('rejects empty client tokens in ADMIN_TOKENS', () => {
     const fallbackToken = randomUUID();
 
-    const clients = loadAdminClients({
+    const clients = loadAdminClients(env({
       ADMIN_TOKENS: JSON.stringify([{ name: 'seat-a', token: '' }]),
       WEB_CONSOLE_ADMIN_TOKEN: fallbackToken,
       JWT_SECRET: '',
-    });
+    }));
 
     expect(clients).toEqual([{ name: 'default', token: fallbackToken }]);
   });
