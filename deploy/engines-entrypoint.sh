@@ -57,10 +57,44 @@ install_engine() {
     fi
 }
 
+# Prepare the seat's project folder so claude/agy start with NO first-run dialog: mark the
+# workspace trusted and record acceptance of "Bypass Permissions mode". This is the declarative
+# equivalent of clicking through the dialogs once — the jobs-hook then just pastes the task into a
+# clean interactive TUI (which bills the subscription). Idempotent; never touches credentials.
+prepare_claude_seat() {
+    local home="${HOME:-/home/ptylon}" ws="${WORKSPACE_ROOT:-/workspace}"
+    command -v python3 >/dev/null 2>&1 || { log "python3 missing; skipping claude seat prep"; return 0; }
+    python3 - "$home" "$ws" <<'PY' && log "claude seat prepared (trust ${ws} + skip bypass prompt)" || log "WARN: claude seat prep failed"
+import json, os, sys
+home, ws = sys.argv[1], sys.argv[2]
+# settings.json: accept bypass-permissions mode up front.
+sp = os.path.join(home, ".claude", "settings.json")
+os.makedirs(os.path.dirname(sp), exist_ok=True)
+try:
+    s = json.load(open(sp))
+except Exception:
+    s = {}
+s.setdefault("permissions", {})["defaultMode"] = "bypassPermissions"
+s["skipDangerousModePermissionPrompt"] = True
+json.dump(s, open(sp, "w"), indent=2)
+# ~/.claude.json: trust the workspace cwd (per-project flag).
+cp = os.path.join(home, ".claude.json")
+try:
+    c = json.load(open(cp))
+except Exception:
+    c = {}
+proj = c.setdefault("projects", {}).setdefault(ws, {})
+proj["hasTrustDialogAccepted"] = True
+proj["hasCompletedProjectOnboarding"] = True
+json.dump(c, open(cp, "w"), indent=2)
+PY
+}
+
 if [ "${INSTALL_ENGINES:-0}" = "1" ] || [ "${INSTALL_ENGINES:-}" = "true" ]; then
     for engine in ${ENGINES:-codex}; do
         install_engine "${engine}"
     done
+    case " ${ENGINES:-codex} " in *" claude "*|*" agy "*) prepare_claude_seat ;; esac
     printf '{"engines":"%s","refreshed_at":"%s"}\n' \
         "${ENGINES:-codex}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         > "${HOME:-/home/ptylon}/.engines-bootstrap.json" 2>/dev/null || true

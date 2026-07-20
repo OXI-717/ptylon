@@ -22,43 +22,51 @@ export function newJobId(): string {
 export interface EngineSpec {
   // shell command that starts the engine in the session cwd
   launch: string;
-  // "interactive": start the TUI, then inject the task (claude/codex/agy).
+  // "interactive": start the TUI, then inject the task (claude/codex/agy). This is deliberate:
+  // an interactive TUI session bills the Claude/Codex SUBSCRIPTION, whereas headless `claude -p`
+  // / the Agent SDK bill a separate credit pool — driving a real PTY spends subscription limits.
+  // Never switch an interactive engine to a `-p`/print form to dodge a dialog; pre-prepare the
+  // seat instead (see acceptSequence + deploy/engines-entrypoint.sh).
   // "headless": run once with the prompt as a command argument (opencode run).
   mode: 'interactive' | 'headless';
-  // interactive only: engine shows a first-run folder-trust dialog to accept with Enter before
-  // the task (claude/agy). codex does not — an extra Enter would submit an empty turn.
-  needsTrustAccept: boolean;
+  // interactive only: keystrokes to send after startup to clear any first-run dialog BEFORE the
+  // task is pasted. Order matters — a blind Enter hits a dialog's default (often "exit"), and a
+  // stray key when there is NO dialog goes straight into the prompt. Normally EMPTY: the seat is
+  // pre-prepared (folder-trust + skipDangerousModePermissionPrompt) so no dialog appears. This is
+  // an escape hatch for an engine/host that cannot be pre-prepared.
+  acceptSequence: string[];
 }
 
 const ENGINES: Record<string, EngineSpec> = {
-  // claude runs headless: `claude -p "<prompt>"` executes the task to completion (edits +
-  // Bash + writes the verdict file) and exits, with no TUI dialogs. The interactive TUI adds
-  // fragile, version-dependent gates — folder-trust AND a "Bypass Permissions mode" accept
-  // prompt (default = exit) that --dangerously-skip-permissions triggers — which -p avoids.
+  // claude: interactive TUI (subscription billing — NOT `claude -p`, which bills the separate
+  // Agent SDK credit pool). --dangerously-skip-permissions would show a "Bypass Permissions mode"
+  // accept dialog, but the seat is pre-prepared (deploy/engines-entrypoint.sh writes
+  // ~/.claude/settings.json skipDangerousModePermissionPrompt=true + trusts the cwd), so the TUI
+  // starts with NO dialog — acceptSequence stays empty (a stray keystroke would go into the prompt).
   claude: {
-    launch: 'claude -p --dangerously-skip-permissions',
-    mode: 'headless',
-    needsTrustAccept: false,
+    launch: 'claude --dangerously-skip-permissions',
+    mode: 'interactive',
+    acceptSequence: [],
   },
-  // codex asks for approval before writing files; bypass it. No folder-trust dialog.
+  // codex asks for approval before writing files; bypass it. No startup dialog to clear.
   codex: {
     launch: 'codex --dangerously-bypass-approvals-and-sandbox',
     mode: 'interactive',
-    needsTrustAccept: false,
+    acceptSequence: [],
   },
-  // agy is claude-structured (interactive + --dangerously-skip-permissions, folder-trust).
+  // agy is claude-structured (same bypass dialog) — also pre-prepared by the seat entrypoint.
   // Quirk: agy may ignore cwd, so the result path in the prompt is absolute (jobResultPath).
   agy: {
     launch: 'agy --dangerously-skip-permissions',
     mode: 'interactive',
-    needsTrustAccept: true,
+    acceptSequence: [],
   },
   // opencode's interactive TUI gates file writes behind a permission prompt with no CLI bypass;
   // its headless `run` form takes --dangerously-skip-permissions and the prompt as an argument.
   opencode: {
     launch: 'opencode run --dangerously-skip-permissions',
     mode: 'headless',
-    needsTrustAccept: false,
+    acceptSequence: [],
   },
 };
 

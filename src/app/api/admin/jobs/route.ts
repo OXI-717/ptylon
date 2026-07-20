@@ -67,11 +67,12 @@ export async function POST(req: NextRequest) {
         data: `${launch} "$(cat ${JSON.stringify(promptPath)})"\n`,
       });
     } else {
-      // Interactive: start the TUI, accept folder-trust (claude/agy), paste the task, submit.
+      // Interactive: start the TUI, clear any first-run dialog via the engine's acceptSequence
+      // (normally empty — the seat is pre-prepared so no dialog appears), paste the task, submit.
       await sendGatewayMessage({ type: 'input', sessionId, data: `${launch}\n` });
       await sleep(ENGINE_STARTUP_MS);
-      if (spec.needsTrustAccept) {
-        await sendGatewayMessage({ type: 'input', sessionId, data: '\r' });
+      for (const key of spec.acceptSequence) {
+        await sendGatewayMessage({ type: 'input', sessionId, data: key });
         await sleep(TRUST_SETTLE_MS);
       }
       // Paste the task+tail, then submit with a separate Enter (bracketed paste).
