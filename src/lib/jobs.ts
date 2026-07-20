@@ -31,10 +31,14 @@ export interface EngineSpec {
 }
 
 const ENGINES: Record<string, EngineSpec> = {
+  // claude runs headless: `claude -p "<prompt>"` executes the task to completion (edits +
+  // Bash + writes the verdict file) and exits, with no TUI dialogs. The interactive TUI adds
+  // fragile, version-dependent gates — folder-trust AND a "Bypass Permissions mode" accept
+  // prompt (default = exit) that --dangerously-skip-permissions triggers — which -p avoids.
   claude: {
-    launch: 'claude --dangerously-skip-permissions',
-    mode: 'interactive',
-    needsTrustAccept: true,
+    launch: 'claude -p --dangerously-skip-permissions',
+    mode: 'headless',
+    needsTrustAccept: false,
   },
   // codex asks for approval before writing files; bypass it. No folder-trust dialog.
   codex: {

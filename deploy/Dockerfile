@@ -39,8 +39,14 @@ RUN apt-get update \
 # mounted at runtime; add claude/opencode via the ENGINES env of the pty service.
 ENV NPM_CONFIG_PREFIX=/home/ptylon/.npm-global \
     PATH=/home/ptylon/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Baked baselines for all three engines so a boot-time refresh flap never leaves an engine
+# missing. codex/claude via npm; opencode via its platform package (npm wrapper is broken) with
+# an `opencode` symlink at the real binary. The boot entrypoint refreshes each to @latest.
 RUN install -d -o ptylon -g ptylon /home/ptylon/.npm-global \
-  && su ptylon -s /bin/bash -c "npm install -g --no-fund --no-audit @openai/codex@latest"
+  && su ptylon -s /bin/bash -c '\
+       npm install -g --no-fund --no-audit \
+         @openai/codex@latest @anthropic-ai/claude-code@latest opencode-linux-arm64@latest \
+       && ln -sf "$(npm root -g)/opencode-linux-arm64/bin/opencode" /home/ptylon/.npm-global/bin/opencode'
 
 COPY --chmod=755 deploy/engines-entrypoint.sh /usr/local/bin/engines-entrypoint.sh
 
