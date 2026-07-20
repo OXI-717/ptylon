@@ -41,16 +41,30 @@ RUN apt-get update \
 # mounted at runtime; add claude/opencode via the ENGINES env of the pty service.
 ENV NPM_CONFIG_PREFIX=/home/ptylon/.npm-global \
     PATH=/home/ptylon/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-# Baked baselines for all three engines so a boot-time refresh flap never leaves an engine
+# Baked baselines for all engines so a boot-time refresh flap never leaves an engine
 # missing. codex/claude via npm; opencode via its platform package (npm wrapper is broken) with
-# an `opencode` symlink at the real binary. The boot entrypoint refreshes each to @latest.
+# an `opencode` symlink at the real binary; agy as a real binary in npm-global/bin because
+# pty mounts opencode's seat over ~/.local.
+# The boot entrypoint refreshes each to @latest without blocking the daemon.
 RUN set -eu; \
+  agy_manifest_base="https://antigravity-cli-auto-updater-974169037036.us-central1.run.app"; \
   case "${TARGETARCH:-$(uname -m)}" in \
-    amd64|x86_64) opencode_package="opencode-linux-x64" ;; \
-    arm64|aarch64) opencode_package="opencode-linux-arm64" ;; \
-    *) echo "unsupported opencode target architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
+    amd64|x86_64) opencode_package="opencode-linux-x64"; agy_platform="linux_amd64" ;; \
+    arm64|aarch64) opencode_package="opencode-linux-arm64"; agy_platform="linux_arm64" ;; \
+    *) echo "unsupported engine target architecture: ${TARGETARCH:-$(uname -m)}" >&2; exit 1 ;; \
   esac; \
-  install -d -o ptylon -g ptylon /home/ptylon/.npm-global \
+  agy_manifest="$(curl -fsSL "${agy_manifest_base}/manifests/${agy_platform}.json")"; \
+  agy_url="$(printf '%s\n' "${agy_manifest}" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"; \
+  agy_sha512="$(printf '%s\n' "${agy_manifest}" | sed -n 's/.*"sha512"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"; \
+  [ -n "${agy_url}" ] && [ -n "${agy_sha512}" ]; \
+  install -d -o ptylon -g ptylon /home/ptylon/.npm-global /home/ptylon/.npm-global/bin \
+  && curl -fsSL -o /tmp/agy-payload "${agy_url}" \
+  && printf '%s  /tmp/agy-payload\n' "${agy_sha512}" | sha512sum -c - \
+  && case "${agy_url}" in \
+       *.tar.gz*) tar -xzf /tmp/agy-payload -C /tmp antigravity && install -m 0755 -o ptylon -g ptylon /tmp/antigravity /home/ptylon/.npm-global/bin/agy ;; \
+       *) install -m 0755 -o ptylon -g ptylon /tmp/agy-payload /home/ptylon/.npm-global/bin/agy ;; \
+     esac \
+  && rm -f /tmp/agy-payload /tmp/antigravity \
   && su ptylon -s /bin/bash -c "\
        npm install -g --no-fund --no-audit \
          @openai/codex@latest @anthropic-ai/claude-code@latest ${opencode_package}@latest \
@@ -67,6 +81,7 @@ COPY --from=build --chown=ptylon:ptylon /app/server ./server
 COPY --from=build --chown=ptylon:ptylon /app/node_modules ./node_modules
 
 ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
     PORT=8790 \
     WS_PORT=8791 \
     WS_HOST=0.0.0.0 \

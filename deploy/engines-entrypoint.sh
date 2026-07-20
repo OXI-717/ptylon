@@ -5,8 +5,8 @@
 # CLIs to @latest on every container boot into a writable npm prefix, so a pinned
 # image version never goes stale and the CLI stays self-updateable at runtime.
 #
-# Opt-in per service: only the `pty` service (which spawns the engine bash sessions)
-# sets INSTALL_ENGINES=1; app/ws skip the install and just exec their command.
+# Opt-in per service: only the `pty` service needs engine refresh. Refresh runs in the
+# background so the daemon can start from the baked baseline and satisfy healthchecks.
 #
 # Non-fatal: a failed refresh (network flap) logs a warning and falls back to the
 # baseline version baked into the image, so the container still boots and serves.
@@ -142,15 +142,20 @@ json.dump(s, open(sp, "w"), indent=2)
 PY
 }
 
-if [ "${INSTALL_ENGINES:-0}" = "1" ] || [ "${INSTALL_ENGINES:-}" = "true" ]; then
+refresh_engines() {
     for engine in ${ENGINES:-codex}; do
         install_engine "${engine}"
     done
-    case " ${ENGINES:-codex} " in *" claude "*|*" agy "*) prepare_claude_seat ;; esac
-    case " ${ENGINES:-codex} " in *" agy "*) prepare_agy_seat ;; esac
     printf '{"engines":"%s","refreshed_at":"%s"}\n' \
         "${ENGINES:-codex}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         > "${HOME:-/home/ptylon}/.engines-bootstrap.json" 2>/dev/null || true
+}
+
+if [ "${INSTALL_ENGINES:-0}" = "1" ] || [ "${INSTALL_ENGINES:-}" = "true" ]; then
+    case " ${ENGINES:-codex} " in *" claude "*|*" agy "*) prepare_claude_seat ;; esac
+    case " ${ENGINES:-codex} " in *" agy "*) prepare_agy_seat ;; esac
+    log "INSTALL_ENGINES enabled; refreshing engines in background"
+    refresh_engines &
 else
     log "INSTALL_ENGINES not set; skipping engine refresh"
 fi

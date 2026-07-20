@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -13,6 +13,37 @@ async function renderCompose(env: Record<string, string> = {}) {
   const composeText = await readFile(composePath, 'utf8');
   return composeText.replace(/\$\{([A-Z0-9_]+):-([^}]+)\}/g, (_match, key: string, fallback: string) => {
     return env[key] ?? fallback;
+  });
+}
+
+async function runComposeConfig(env: Record<string, string> = {}) {
+  const root = await mkdtemp(path.join(tmpdir(), 'ptylon-compose-'));
+  const envPath = path.join(root, '.env');
+  await writeFile(
+    envPath,
+    [
+      'AUTH_PASSWORD=test-password-change-me',
+      'JWT_SECRET=test-jwt-secret',
+      'WEB_CONSOLE_ADMIN_TOKEN=abcdefghijklmnop',
+      ...Object.entries(env).map(([key, value]) => `${key}=${value}`),
+      '',
+    ].join('\n'),
+  );
+
+  return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
+    const child = spawn('docker', ['compose', '--env-file', envPath, '-f', composePath, 'config'], {
+      cwd: repoRoot,
+      env: process.env,
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    child.on('close', (code) => resolve({ code, stdout, stderr }));
   });
 }
 
@@ -72,6 +103,7 @@ describe('deploy/bootstrap-host.sh', () => {
     expect(envText).toContain('ENGINES="codex claude opencode agy"');
     expect(envText).toContain(`WEB_CONSOLE_ADMIN_TOKEN=${token}`);
     expect(envText).toContain('COMPOSE_PROJECT_NAME=autopilot');
+    expect(envText).toContain('ADMIN_ALLOW_REMOTE=1');
     expect(envText).toContain('PTYLON_MEM_APP=512m');
     expect(envText).toContain('PTYLON_MEM_WS=256m');
     expect(envText).toContain('PTYLON_MEM_PTY=1g');
@@ -175,9 +207,24 @@ describe('deploy/bootstrap-host.sh', () => {
   it('wires engine inventory and persistent auth mounts in compose', async () => {
     const composeText = await readFile(composePath, 'utf8');
 
+    expect(serviceBlock(composeText, 'app')).toContain('HOSTNAME: 0.0.0.0');
+    expect(serviceBlock(composeText, 'app')).toContain('ADMIN_ALLOW_REMOTE: ${ADMIN_ALLOW_REMOTE:-0}');
     expect(composeText).toMatch(/app:[\s\S]*ENGINES: \${ENGINES:-codex}/);
     expect(composeText).toContain('${PTYLON_OPENCODE_HOME:-/opt/ptylon/seats/opencode-home}:/home/ptylon/.local');
     expect(composeText).toContain('${PTYLON_CLAUDE_JSON:-/opt/ptylon/seats/claude-home/.claude.json}:/home/ptylon/.claude.json');
+  });
+
+  it('renders app bind and admin remote mode through docker compose config', async () => {
+    const result = await runComposeConfig();
+
+    expect(result.code, result.stderr).toBe(0);
+    const appBlock = serviceBlock(result.stdout, 'app');
+    expect(appBlock).toContain('HOSTNAME: 0.0.0.0');
+    expect(appBlock).toContain('ADMIN_ALLOW_REMOTE: "0"');
+
+    const sharedHost = await runComposeConfig({ ADMIN_ALLOW_REMOTE: '1' });
+    expect(sharedHost.code, sharedHost.stderr).toBe(0);
+    expect(serviceBlock(sharedHost.stdout, 'app')).toContain('ADMIN_ALLOW_REMOTE: "1"');
   });
 
   it('renders shared-host compose memory limits, OOM guard, and project name from env', async () => {

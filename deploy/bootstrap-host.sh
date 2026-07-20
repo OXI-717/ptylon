@@ -175,6 +175,7 @@ JWT_SECRET=$jwt_secret
 WEB_CONSOLE_ADMIN_TOKEN=$admin_token
 ENGINES=$(quote_env "$engines")
 INSTALL_ENGINES=1
+ADMIN_ALLOW_REMOTE=1
 COMPOSE_PROJECT_NAME=$compose_project_name
 PTYLON_APP_BIND=$app_bind
 PTYLON_APP_PORT=$app_port
