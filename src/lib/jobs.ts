@@ -84,8 +84,10 @@ export function promptRefPath(jobId: string): string {
 // file, never from the PTY. Phrasing validated live on claude (oxi-skills Wave 0 spike).
 export function buildJobPrompt(task: string, resultPath: string, nonce: string): string {
   return (
-    `${task}\n\nWhen finished, write ONLY the final verdict as JSON to the file ` +
-    `${resultPath} (create directories if needed). The JSON MUST contain the field ` +
-    `"nonce":"${nonce}". Do NOT print the verdict to the terminal.`
+    `${task}\n\nWhen finished, write ONLY a JSON object to the file ` +
+    `${resultPath} (create directories if needed) with EXACTLY these two fields: ` +
+    `{"verdict": "<a short one-line summary of the outcome>", "nonce": "${nonce}"}. ` +
+    `Use the literal key "verdict" for the summary. ` +
+    `Do NOT print the verdict to the terminal.`
   );
 }
