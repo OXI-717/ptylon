@@ -170,8 +170,8 @@ describe('deploy/bootstrap-host.sh', () => {
     await expect(stat(chownLog)).rejects.toThrow();
   });
 
-  it('fails closed when seat ownership cannot be resolved', async () => {
-    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-fail-'));
+  it('falls back to uid 999 when the image is not built yet (clean host)', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-fallback-'));
     const chownLog = path.join(root, 'chown.log');
     const toolchain = await createToolBin({
       docker: `
@@ -203,8 +203,31 @@ exit 0
       toolchain.binDir,
     );
 
+    expect(result.code, result.stderr).toBe(0);
+    expect(result.stderr).toContain('using fallback 999');
+    const chownCalls = await readFile(chownLog, 'utf8');
+    expect(chownCalls).toContain('999:999');
+  });
+
+  it('rejects an explicitly set non-numeric PTYLON_UID', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-bad-'));
+    const chownLog = path.join(root, 'chown.log');
+    const toolchain = await createToolBin({
+      systemctl: `\nexit 0\n`,
+      curl: `\nexit 0\n`,
+    });
+    const result = await runBootstrap(
+      {
+        PTYLON_UID: 'notanumber',
+        PTYLON_GID: '999',
+        CHOWN_LOG_FILE: chownLog,
+      },
+      [],
+      toolchain.binDir,
+    );
+
     expect(result.code).not.toBe(0);
-    expect(result.stderr).toContain('unable to resolve ptylon uid/gid');
+    expect(result.stderr).toContain('invalid ptylon uid');
     await expect(stat(chownLog)).rejects.toThrow();
   });
 

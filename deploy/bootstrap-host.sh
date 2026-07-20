@@ -142,11 +142,18 @@ resolve_ptylon_ids() {
     fi
   fi
 
+  # First bootstrap on a clean host: the image is built by `docker compose up` later, so
+  # `docker run ptylon:local` above fails and uid/gid come back empty. Fall back to the
+  # image's stable system uid (Dockerfile creates ptylon via `useradd --system` → 999)
+  # so the happy path is not blocked; a non-numeric value that was *explicitly set* is a
+  # real misconfiguration and still fails.
+  [ -n "$uid" ] || { uid=${PTYLON_UID_FALLBACK:-999}; log "WARN: could not resolve ptylon uid from ptylon:local (image not built yet?); using fallback ${uid}"; }
+  [ -n "$gid" ] || gid=${PTYLON_GID_FALLBACK:-999}
   case "$uid" in
-    ''|*[!0-9]*) fail "unable to resolve ptylon uid/gid from ptylon:local; set PTYLON_UID/PTYLON_GID" ;;
+    *[!0-9]*) fail "invalid ptylon uid '${uid}'; set a numeric PTYLON_UID" ;;
   esac
   case "$gid" in
-    ''|*[!0-9]*) fail "unable to resolve ptylon uid/gid from ptylon:local; set PTYLON_UID/PTYLON_GID" ;;
+    *[!0-9]*) fail "invalid ptylon gid '${gid}'; set a numeric PTYLON_GID" ;;
   esac
 
   printf '%s %s\n' "$uid" "$gid"
