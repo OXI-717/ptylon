@@ -59,6 +59,8 @@ oom_adj=${PTYLON_OOM_ADJ:-500}
 smoke_retries=${PTYLON_SMOKE_RETRIES:-30}
 smoke_delay=${PTYLON_SMOKE_DELAY:-2}
 smoke_timeout=${PTYLON_SMOKE_TIMEOUT:-5}
+ptylon_uid=${PTYLON_UID:-}
+ptylon_gid=${PTYLON_GID:-}
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "$1 is required"
@@ -125,6 +127,47 @@ quote_env() {
   printf '"%s"' "$value"
 }
 
+resolve_ptylon_ids() {
+  local uid="$1"
+  local gid="$2"
+  local fallback=0
+
+  if [ -z "$uid" ] || [ -z "$gid" ]; then
+    if command -v docker >/dev/null 2>&1; then
+      if [ -z "$uid" ]; then
+        uid=$(docker run --rm --entrypoint id ptylon:local -u ptylon 2>/dev/null || true)
+      fi
+      if [ -z "$gid" ]; then
+        gid=$(docker run --rm --entrypoint id ptylon:local -g ptylon 2>/dev/null || true)
+      fi
+    fi
+  fi
+
+  case "$uid" in
+    ''|*[!0-9]*) uid=999; fallback=1 ;;
+  esac
+  case "$gid" in
+    ''|*[!0-9]*) gid=999; fallback=1 ;;
+  esac
+
+  if [ "$fallback" -eq 1 ]; then
+    log "WARNING: unable to resolve ptylon uid/gid from ptylon:local; using fallback ${uid}:${gid}"
+  fi
+
+  printf '%s %s\n' "$uid" "$gid"
+}
+
+sync_seat_home_ownership() {
+  local uid="$1" gid="$2"
+
+  chown -R "${uid}:${gid}" \
+    "$codex_home" \
+    "$claude_home" \
+    "$opencode_home" \
+    "$agy_home"
+  chown "${uid}:${gid}" "$claude_json"
+}
+
 [ -d "$repo_dir" ] || fail "repository directory does not exist: $repo_dir"
 [ -f "$compose_file" ] || fail "docker compose file does not exist: $compose_file"
 
@@ -154,6 +197,11 @@ if [ ! -e "$claude_json" ]; then
 fi
 [ -f "$claude_json" ] || fail "PTYLON_CLAUDE_JSON must be a file: $claude_json"
 chmod 0600 "$claude_json"
+
+read -r ptylon_uid ptylon_gid <<EOF
+$(resolve_ptylon_ids "$ptylon_uid" "$ptylon_gid")
+EOF
+sync_seat_home_ownership "$ptylon_uid" "$ptylon_gid"
 
 if [ -f "$token_file" ] && [ "$rotate_token" -eq 0 ]; then
   admin_token=$(tr -d '\r\n' < "$token_file")
