@@ -101,6 +101,18 @@ try:
     c = json.load(open(cp))
 except Exception:
     c = {}
+# Top-level onboarding gate: `claude auth login` writes oauthAccount/userID but NOT these, so a
+# fresh seat still runs the first-run wizard ("choose theme" -> "Select login method") over valid
+# credentials, and the jobs-hook pastes the task into the wizard instead of a prompt.
+c["hasCompletedOnboarding"] = True
+c.setdefault("theme", "dark")
+c["bypassPermissionsModeAccepted"] = True
+c["hasAcknowledgedCostThreshold"] = True
+# Recurring growthbook upsell nudges (fullscreen renderer, passes) also steal the injected prompt
+# the first time they appear; their "*SeenCount" keys gate them, so mark them already seen.
+for _k in ("fullscreenUpsellSeenCount", "passesUpsellSeenCount"):
+    if not isinstance(c.get(_k), int) or c[_k] < 9:
+        c[_k] = 9
 proj = c.setdefault("projects", {}).setdefault(ws, {})
 proj["hasTrustDialogAccepted"] = True
 proj["hasCompletedProjectOnboarding"] = True
@@ -142,6 +154,53 @@ json.dump(s, open(sp, "w"), indent=2)
 PY
 }
 
+# opencode's default model and provider endpoint are deployment-specific, and the live deploy hit
+# two auth traps: (1) an interactive `opencode auth login` can persist the API key with stray
+# leading/trailing whitespace -> "Authentication Failed"; strip it. (2) a subscription key that is
+# only valid against a non-default provider endpoint (e.g. a GLM Coding-plan key -> coding base URL)
+# needs both the model and the provider baseURL pinned, otherwise opencode hits the wrong endpoint
+# and stalls. Pin from OPENCODE_MODEL / OPENCODE_BASE_URL when the deployment declares them.
+# Idempotent; never fabricates credentials.
+prepare_opencode_seat() {
+    local home="${HOME:-/home/ptylon}"
+    command -v python3 >/dev/null 2>&1 || { log "python3 missing; skipping opencode seat prep"; return 0; }
+    python3 - "$home" "${OPENCODE_MODEL:-}" "${OPENCODE_BASE_URL:-}" <<'PY' && log "opencode seat prepared" || log "WARN: opencode seat prep failed"
+import json, os, sys
+home, model, base_url = sys.argv[1], sys.argv[2], sys.argv[3]
+# 1) strip stray whitespace from persisted provider keys (a leading space breaks auth).
+aj = os.path.join(home, ".local", "share", "opencode", "auth.json")
+try:
+    a = json.load(open(aj))
+    changed = False
+    for cfg in a.values():
+        if isinstance(cfg, dict) and isinstance(cfg.get("key"), str):
+            s = cfg["key"].strip()
+            if s != cfg["key"]:
+                cfg["key"] = s
+                changed = True
+    if changed:
+        json.dump(a, open(aj, "w"), indent=2)
+except FileNotFoundError:
+    pass
+except Exception as e:
+    print(f"opencode auth.json: {e}", file=sys.stderr)
+# 2) pin model (+ provider baseURL derived from the model's provider) when declared.
+if model:
+    cp = os.path.join(home, ".config", "opencode", "opencode.json")
+    os.makedirs(os.path.dirname(cp), exist_ok=True)
+    try:
+        c = json.load(open(cp))
+    except Exception:
+        c = {}
+    c.setdefault("$schema", "https://opencode.ai/config.json")
+    c["model"] = model
+    if base_url:
+        provider = model.split("/", 1)[0]
+        c.setdefault("provider", {}).setdefault(provider, {}).setdefault("options", {})["baseURL"] = base_url
+    json.dump(c, open(cp, "w"), indent=2)
+PY
+}
+
 refresh_engines() {
     for engine in ${ENGINES:-codex}; do
         install_engine "${engine}"
@@ -154,6 +213,7 @@ refresh_engines() {
 if [ "${INSTALL_ENGINES:-0}" = "1" ] || [ "${INSTALL_ENGINES:-}" = "true" ]; then
     case " ${ENGINES:-codex} " in *" claude "*|*" agy "*) prepare_claude_seat ;; esac
     case " ${ENGINES:-codex} " in *" agy "*) prepare_agy_seat ;; esac
+    case " ${ENGINES:-codex} " in *" opencode "*) prepare_opencode_seat ;; esac
     log "INSTALL_ENGINES enabled; refreshing engines in background"
     refresh_engines &
 else
