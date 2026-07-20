@@ -65,6 +65,7 @@ services:
     networks: [edge, ptylon]
 
   pty:
+    # PTY sessions get outbound access for trusted agent engines; internal app traffic stays on ptylon.
     image: ptylon:local
     pull_policy: never
     restart: unless-stopped
@@ -92,7 +93,7 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
-    networks: [ptylon]
+    networks: [ptylon, edge]
 
 volumes:
   ptylon-data:
