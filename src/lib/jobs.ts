@@ -22,11 +22,14 @@ export function newJobId(): string {
 export interface EngineSpec {
   // shell command that starts the engine in the session cwd
   launch: string;
-  // "interactive": start the TUI, then inject the task (claude/codex/agy). This is deliberate:
-  // an interactive TUI session bills the Claude/Codex SUBSCRIPTION, whereas headless `claude -p`
-  // / the Agent SDK bill a separate credit pool — driving a real PTY spends subscription limits.
-  // Never switch an interactive engine to a `-p`/print form to dodge a dialog; pre-prepare the
-  // seat instead (see acceptSequence + deploy/engines-entrypoint.sh).
+  // "interactive": start the TUI, then inject the task (claude/codex/agy). Billing note:
+  // BOTH the interactive TUI and the headless `claude -p` print form bill the Claude/Codex
+  // SUBSCRIPTION — the separate credit pool applies only to the Agent SDK / direct API, not
+  // to the CLI's `-p` mode (an earlier revision conflated the two; OXI-717/ptylon#25).
+  // Interactive stays valuable as (a) insurance if the vendor ever splits `-p` into its own
+  // tier and (b) the transport for interactive attach. headless↔interactive is a deployment
+  // choice, not a billing necessity. Don't switch an interactive engine to `-p` merely to
+  // dodge a dialog — pre-prepare the seat instead (acceptSequence + deploy/engines-entrypoint.sh).
   // "headless": run once with the prompt as a command argument (opencode run).
   mode: 'interactive' | 'headless';
   // interactive only: keystrokes to send after startup to clear any first-run dialog BEFORE the
