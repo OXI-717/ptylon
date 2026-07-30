@@ -45,8 +45,8 @@ RUN apt-get update \
 # installer from editing shell profiles and from installing a self-updater — correct for an
 # image, where the way to update is rebuilding it.
 RUN set -eu; \
-  UV_UNMANAGED_INSTALL=/usr/local/bin \
-    curl -fsSL --max-time 120 https://astral.sh/uv/install.sh | sh; \
+  export UV_UNMANAGED_INSTALL=/usr/local/bin; \
+  curl -fsSL --max-time 120 https://astral.sh/uv/install.sh | sh; \
   uv --version
 
 # Coding-agent engines for the oxi-remote-agents jobs-hook. The engines are installed into
