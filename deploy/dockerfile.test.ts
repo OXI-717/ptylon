@@ -51,6 +51,10 @@ describe('deploy/Dockerfile', () => {
     // Same constraint that puts agy in npm-global/bin: pty mounts a seat over ~/.local.
     expect(dockerfile).toContain('UV_UNMANAGED_INSTALL=/usr/local/bin');
     expect(dockerfile).toContain('https://astral.sh/uv/install.sh');
+    // The setting must reach the shell that RUNS the script, not the curl that fetches it:
+    // `VAR=x curl … | sh` puts VAR in curl's environment and the installer falls back to
+    // its default target, which is exactly how the first build failed (uv: not found).
+    expect(dockerfile).toMatch(/export UV_UNMANAGED_INSTALL=\/usr\/local\/bin/);
     expect(dockerfile).not.toMatch(/UV_INSTALL_DIR=\/home\/ptylon\/\.local/);
     expect(dockerfile).not.toMatch(/UV_UNMANAGED_INSTALL=\/home\/ptylon\/\.local/);
     // The installer treats UV_UNMANAGED_INSTALL as a directory, not a boolean.
