@@ -23,15 +23,31 @@ ARG TARGETARCH
 # Base runtime + a common toolbox the coding-agent engines expect for real work: python3
 # (with pip/venv + build tooling for C-extensions), plus the everyday CLIs agents reach for
 # (curl/wget/jq/ripgrep/less/ps/unzip/ssh). Keep --no-install-recommends to bound image size.
+# `bats` is here because a repo's own test gate calls it (oxi-task-runner's `make test` runs
+# the Python suite and then `bats scripts/tests/`): a job that can build but cannot verify is
+# worse than useless — it burns engine time and reports a red gate that says nothing about the
+# code.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        bash ca-certificates tini git \
        python3 python3-pip python3-venv build-essential \
-       curl wget jq ripgrep less procps unzip openssh-client \
+       curl wget jq ripgrep less procps unzip openssh-client bats \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --system ptylon \
   && useradd --system --gid ptylon --create-home --home-dir /home/ptylon --shell /bin/bash ptylon \
   && install -d -o ptylon -g ptylon /app /data /workspace /workspace/uploads
+
+# uv: the Python project runner several repos use to drive their own test gate
+# (`uv run --locked --extra dev …`). Installed into /usr/local/bin, NOT ~/.local/bin, for the
+# same reason agy lives in npm-global/bin: pty mounts opencode's seat over ~/.local, which would
+# hide anything placed there.
+# UV_UNMANAGED_INSTALL takes the target directory (not a boolean) and, being set, also stops the
+# installer from editing shell profiles and from installing a self-updater — correct for an
+# image, where the way to update is rebuilding it.
+RUN set -eu; \
+  UV_UNMANAGED_INSTALL=/usr/local/bin \
+    curl -fsSL --max-time 120 https://astral.sh/uv/install.sh | sh; \
+  uv --version
 
 # Coding-agent engines for the oxi-remote-agents jobs-hook. The engines are installed into
 # a writable, ptylon-owned npm prefix so the boot entrypoint (deploy/engines-entrypoint.sh)
