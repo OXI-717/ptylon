@@ -60,4 +60,22 @@ describe('deploy/Dockerfile', () => {
     // The installer treats UV_UNMANAGED_INSTALL as a directory, not a boolean.
     expect(dockerfile).not.toMatch(/UV_UNMANAGED_INSTALL=(1|true)\b/);
   });
+
+  it('creates the seat user with a build-arg uid matched to the host service user', async () => {
+    const dockerfile = await readFile(dockerfilePath, 'utf8');
+    const instructions = dockerfile
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n');
+
+    // One uid on both sides of every bind mount (host autopilot ↔ seat ptylon) makes
+    // plain ownership sufficient. Two uids force POSIX ACLs, whose mask a tight
+    // create-mode silently caps — six live incidents in oxi-skills (#1417 … #1542).
+    expect(instructions).toMatch(/ARG PTYLON_UID=1500/);
+    expect(instructions).toMatch(/useradd[^\n]*--uid "\$\{PTYLON_UID\}"/);
+    expect(instructions).toMatch(/groupadd[^\n]*--gid "\$\{PTYLON_UID\}"/);
+    // --system would allocate from the 100-999 range other services collide with.
+    expect(instructions).not.toMatch(/useradd[^\n]*--system/);
+    expect(instructions).not.toMatch(/groupadd[^\n]*--system/);
+  });
 });

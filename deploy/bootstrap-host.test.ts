@@ -170,7 +170,7 @@ describe('deploy/bootstrap-host.sh', () => {
     await expect(stat(chownLog)).rejects.toThrow();
   });
 
-  it('falls back to uid 999 when the image is not built yet (clean host)', async () => {
+  it('falls back to uid 1500 when the image is not built yet (clean host)', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'ptylon-bootstrap-chown-fallback-'));
     const chownLog = path.join(root, 'chown.log');
     const toolchain = await createToolBin({
@@ -204,9 +204,9 @@ exit 0
     );
 
     expect(result.code, result.stderr).toBe(0);
-    expect(result.stderr).toContain('using fallback 999');
+    expect(result.stderr).toContain('using fallback 1500');
     const chownCalls = await readFile(chownLog, 'utf8');
-    expect(chownCalls).toContain('999:999');
+    expect(chownCalls).toContain('1500:1500');
   });
 
   it('rejects an explicitly set non-numeric PTYLON_UID', async () => {

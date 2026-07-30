@@ -19,6 +19,13 @@ RUN pnpm build && pnpm prune --prod
 FROM node:22-bookworm-slim AS runtime
 
 ARG TARGETARCH
+# Seat user uid must MATCH the host service user (autopilot, uid 1500) that shares
+# bind-mounted state with the seat. With one uid on both sides plain ownership does the
+# job; with two, every shared file needs POSIX ACLs — and an ACL mask capped by a tight
+# create-mode silently zeroes the named-user entry (six incidents: oxi-skills #1417,
+# #1504, #1515, #1517, #1521, #1542). A regular uid (not --system) keeps the value out
+# of the 100-999 range that host system services and other images allocate from.
+ARG PTYLON_UID=1500
 
 # Base runtime + a common toolbox the coding-agent engines expect for real work: python3
 # (with pip/venv + build tooling for C-extensions), plus the everyday CLIs agents reach for
@@ -33,8 +40,8 @@ RUN apt-get update \
        python3 python3-pip python3-venv build-essential \
        curl wget jq ripgrep less procps unzip openssh-client bats \
   && rm -rf /var/lib/apt/lists/* \
-  && groupadd --system ptylon \
-  && useradd --system --gid ptylon --create-home --home-dir /home/ptylon --shell /bin/bash ptylon \
+  && groupadd --gid "${PTYLON_UID}" ptylon \
+  && useradd --uid "${PTYLON_UID}" --gid ptylon --create-home --home-dir /home/ptylon --shell /bin/bash ptylon \
   && install -d -o ptylon -g ptylon /app /data /workspace /workspace/uploads
 
 # uv: the Python project runner several repos use to drive their own test gate
