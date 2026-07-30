@@ -32,6 +32,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # vitest covers src/** and deploy/** (see vitest.config.ts). Without this step the
+      # unit tests are dead weight: they exist, pass locally, and guard nothing in CI.
+      - name: Unit tests
+        run: pnpm test
+
       - name: PTY gateway smoke
         run: pnpm test:pty-gateway
 

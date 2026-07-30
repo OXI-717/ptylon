@@ -31,4 +31,29 @@ describe('deploy/Dockerfile', () => {
     expect(dockerfile).not.toContain('/home/ptylon/.local/bin/agy');
     expect(dockerfile).not.toContain('ln -sf /home/ptylon/.local/bin/agy');
   });
+
+  it('bakes the test-gate toolchain a job needs to verify its own work', async () => {
+    const dockerfile = await readFile(dockerfilePath, 'utf8');
+    // Strip comments: a package name mentioned in prose must not satisfy this check.
+    const instructions = dockerfile
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n');
+
+    // A repo's `make test` runs its Python suite and then `bats`. Without bats the gate
+    // exits 127 and the job reports a red verify that says nothing about the code.
+    expect(instructions).toMatch(/apt-get install[\s\S]*\bbats\b/);
+  });
+
+  it('installs uv outside ~/.local, which the opencode seat mount would hide', async () => {
+    const dockerfile = await readFile(dockerfilePath, 'utf8');
+
+    // Same constraint that puts agy in npm-global/bin: pty mounts a seat over ~/.local.
+    expect(dockerfile).toContain('UV_UNMANAGED_INSTALL=/usr/local/bin');
+    expect(dockerfile).toContain('https://astral.sh/uv/install.sh');
+    expect(dockerfile).not.toMatch(/UV_INSTALL_DIR=\/home\/ptylon\/\.local/);
+    expect(dockerfile).not.toMatch(/UV_UNMANAGED_INSTALL=\/home\/ptylon\/\.local/);
+    // The installer treats UV_UNMANAGED_INSTALL as a directory, not a boolean.
+    expect(dockerfile).not.toMatch(/UV_UNMANAGED_INSTALL=(1|true)\b/);
+  });
 });
