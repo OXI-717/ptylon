@@ -74,7 +74,8 @@ function delay(ms: number) {
 }
 
 function waitForChromeExit(session: BrowserSession, timeoutMs: number) {
-  if (session.chrome.exitCode !== null || session.chrome.signalCode !== null) return Promise.resolve(true);
+  if (session.chrome.exitCode !== null || session.chrome.signalCode !== null)
+    return Promise.resolve(true);
   return new Promise<boolean>((resolve) => {
     const timer = setTimeout(() => {
       session.chrome.off('exit', onExit);
@@ -105,7 +106,12 @@ function listCrashpadPids() {
         resolve([]);
         return;
       }
-      resolve(stdout.split(/\s+/).map((pid) => Number(pid)).filter(Number.isFinite));
+      resolve(
+        stdout
+          .split(/\s+/)
+          .map((pid) => Number(pid))
+          .filter(Number.isFinite),
+      );
     });
   });
 }
@@ -125,7 +131,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function redactText(value: string) {
   return value
     .replace(/(bearer\s+)[a-z0-9._~+/=-]{12,}/gi, '$1[redacted]')
-    .replace(/((?:token|secret|password|passwd|apikey|api_key|authorization)=)[^&\s]{4,}/gi, '$1[redacted]')
+    .replace(
+      /((?:token|secret|password|passwd|apikey|api_key|authorization)=)[^&\s]{4,}/gi,
+      '$1[redacted]',
+    )
     .replace(/\b(sk-[a-z0-9_-]{12,})\b/gi, '[redacted-openai-key]')
     .replace(/\b([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})\b/gi, '[redacted-email]');
 }
@@ -134,7 +143,9 @@ function redactValue(value: unknown): unknown {
   if (typeof value === 'string') return redactText(value);
   if (Array.isArray(value)) return value.map(redactValue);
   if (isRecord(value)) {
-    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, redactValue(entry)]));
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, redactValue(entry)]),
+    );
   }
   return value;
 }
@@ -164,7 +175,11 @@ class Cdp {
         const pending = this.pending.get(message.id)!;
         this.pending.delete(message.id);
         if (isRecord(message.error)) {
-          pending.reject(new Error(`${String(message.error.message || 'CDP error')}: ${JSON.stringify(message.error.data || '')}`));
+          pending.reject(
+            new Error(
+              `${String(message.error.message || 'CDP error')}: ${JSON.stringify(message.error.data || '')}`,
+            ),
+          );
         } else {
           pending.resolve(isRecord(message.result) ? message.result : {});
         }
@@ -178,7 +193,9 @@ class Cdp {
     if (this.ws.readyState === WebSocket.OPEN) return;
     await new Promise<void>((resolve, reject) => {
       this.ws.addEventListener('open', () => resolve(), { once: true });
-      this.ws.addEventListener('error', () => reject(new Error('Chrome CDP websocket failed')), { once: true });
+      this.ws.addEventListener('error', () => reject(new Error('Chrome CDP websocket failed')), {
+        once: true,
+      });
     });
   }
 
@@ -189,7 +206,9 @@ class Cdp {
   call(method: string, params: Record<string, unknown> = {}, sessionId?: string) {
     const id = this.nextId++;
     const payload = sessionId ? { id, method, params, sessionId } : { id, method, params };
-    const promise = new Promise<Record<string, unknown>>((resolve, reject) => this.pending.set(id, { resolve, reject }));
+    const promise = new Promise<Record<string, unknown>>((resolve, reject) =>
+      this.pending.set(id, { resolve, reject }),
+    );
     this.ws.send(JSON.stringify(payload));
     return promise;
   }
@@ -204,22 +223,28 @@ async function startChrome(id: string) {
   await mkdir(profile, { recursive: true });
   const port = 9400 + Math.floor(Math.random() * 1000);
   const existingCrashpadPids = new Set(await listCrashpadPids());
-  const chrome = spawn(CHROME, [
-    '--headless=new',
-    '--no-sandbox',
-    '--disable-gpu',
-    '--disable-crash-reporter',
-    '--disable-crashpad',
-    '--disable-breakpad',
-    '--disable-dev-shm-usage',
-    '--window-size=1440,950',
-    `--user-data-dir=${profile}`,
-    `--remote-debugging-port=${port}`,
-    'about:blank',
-  ], { detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  const chrome = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-crash-reporter',
+      '--disable-crashpad',
+      '--disable-breakpad',
+      '--disable-dev-shm-usage',
+      '--window-size=1440,950',
+      `--user-data-dir=${profile}`,
+      `--remote-debugging-port=${port}`,
+      'about:blank',
+    ],
+    { detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
+  );
 
   let stderr = '';
-  chrome.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+  chrome.stderr.on('data', (chunk) => {
+    stderr += chunk.toString();
+  });
   chrome.once('exit', () => {
     const session = sessions.get(id);
     if (session?.chrome === chrome) sessions.delete(id);
@@ -230,7 +255,7 @@ async function startChrome(id: string) {
     try {
       const res = await fetch(`http://127.0.0.1:${port}/json/version`);
       if (res.ok) {
-        const data = await res.json() as { webSocketDebuggerUrl?: string };
+        const data = (await res.json()) as { webSocketDebuggerUrl?: string };
         wsUrl = data.webSocketDebuggerUrl || '';
         if (wsUrl) break;
       }
@@ -268,17 +293,24 @@ async function newPage(cdp: Cdp): Promise<BrowserPage> {
 }
 
 async function evaluate(session: BrowserSession, expression: string) {
-  const result = await session.cdp.call('Runtime.evaluate', {
-    expression,
-    awaitPromise: true,
-    returnByValue: true,
-  }, session.page.sessionId);
+  const result = await session.cdp.call(
+    'Runtime.evaluate',
+    {
+      expression,
+      awaitPromise: true,
+      returnByValue: true,
+    },
+    session.page.sessionId,
+  );
   if (result.exceptionDetails) throw new Error('Browser evaluation failed');
   return (result.result as { value?: unknown } | undefined)?.value;
 }
 
 async function currentPageState(session: BrowserSession) {
-  const raw = await evaluate(session, `(() => ({ url: location.href, title: document.title || '' }))()`);
+  const raw = await evaluate(
+    session,
+    `(() => ({ url: location.href, title: document.title || '' }))()`,
+  );
   const data = isRecord(raw) ? raw : {};
   return {
     url: typeof data.url === 'string' ? redactText(data.url) : 'about:blank',
@@ -287,7 +319,9 @@ async function currentPageState(session: BrowserSession) {
 }
 
 async function navigationState(session: BrowserSession) {
-  const result = await session.cdp.call('Page.getNavigationHistory', {}, session.page.sessionId).catch((): Record<string, unknown> => ({}));
+  const result = await session.cdp
+    .call('Page.getNavigationHistory', {}, session.page.sessionId)
+    .catch((): Record<string, unknown> => ({}));
   const currentIndex = Number(result.currentIndex ?? -1);
   const entries = Array.isArray(result.entries) ? result.entries : [];
   return {
@@ -301,7 +335,10 @@ async function navigationState(session: BrowserSession) {
 async function waitForReady(session: BrowserSession, timeoutMs = 12000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const ready = await evaluate(session, `document.readyState === 'complete' || document.readyState === 'interactive'`).catch(() => false);
+    const ready = await evaluate(
+      session,
+      `document.readyState === 'complete' || document.readyState === 'interactive'`,
+    ).catch(() => false);
     if (ready) return;
     await delay(200);
   }
@@ -312,12 +349,29 @@ function attachErrorCapture(session: BrowserSession) {
     if (message.sessionId !== session.page.sessionId) return;
     const method = String(message.method || '');
     const params = isRecord(message.params) ? message.params : {};
-    if (method === 'Runtime.consoleAPICalled' && (params.type === 'error' || params.type === 'assert')) {
+    if (
+      method === 'Runtime.consoleAPICalled' &&
+      (params.type === 'error' || params.type === 'assert')
+    ) {
       const args = Array.isArray(params.args) ? params.args : [];
-      session.consoleErrors.push(redactText(args.map((arg) => isRecord(arg) ? String(arg.value ?? arg.description ?? '') : '').join(' ')));
+      session.consoleErrors.push(
+        redactText(
+          args
+            .map((arg) => (isRecord(arg) ? String(arg.value ?? arg.description ?? '') : ''))
+            .join(' '),
+        ),
+      );
     }
     if (method === 'Runtime.exceptionThrown' && isRecord(params.exceptionDetails)) {
-      session.consoleErrors.push(redactText(String(params.exceptionDetails.text || params.exceptionDetails.exception || 'Uncaught exception')));
+      session.consoleErrors.push(
+        redactText(
+          String(
+            params.exceptionDetails.text ||
+              params.exceptionDetails.exception ||
+              'Uncaught exception',
+          ),
+        ),
+      );
     }
     if (method === 'Log.entryAdded' && isRecord(params.entry) && params.entry.level === 'error') {
       session.consoleErrors.push(redactText(String(params.entry.text || 'Browser log error')));
@@ -442,7 +496,9 @@ export async function openOrNavigateBrowserSession(options: { sessionId?: string
 }
 
 export async function snapshotBrowser(session: BrowserSession): Promise<BrowserSnapshot> {
-  const raw = await evaluate(session, `(() => {
+  const raw = await evaluate(
+    session,
+    `(() => {
     const selectorFor = ${selectorFor.toString()};
     const text = document.body?.innerText || '';
     return {
@@ -461,8 +517,12 @@ export async function snapshotBrowser(session: BrowserSession): Promise<BrowserS
         text: (el.textContent || el.getAttribute('value') || el.getAttribute('aria-label') || '').trim().slice(0, 120)
       }))
     };
-  })()`);
-  const data = redactValue(raw) as Omit<BrowserSnapshot, 'sessionId' | 'consoleErrors' | 'updatedAt'>;
+  })()`,
+  );
+  const data = redactValue(raw) as Omit<
+    BrowserSnapshot,
+    'sessionId' | 'consoleErrors' | 'updatedAt'
+  >;
   return {
     sessionId: session.id,
     url: data.url,
@@ -483,24 +543,35 @@ function clampViewport(value: unknown, fallback: number, min: number, max: numbe
   return Math.max(min, Math.min(max, Math.round(parsed)));
 }
 
-export async function frameBrowser(session: BrowserSession, options: { width?: unknown; height?: unknown; format?: unknown; quality?: unknown } = {}): Promise<BrowserFrame> {
+export async function frameBrowser(
+  session: BrowserSession,
+  options: { width?: unknown; height?: unknown; format?: unknown; quality?: unknown } = {},
+): Promise<BrowserFrame> {
   const width = clampViewport(options.width, 1280, 320, 2400);
   const height = clampViewport(options.height, 800, 240, 1800);
   const format = options.format === 'png' ? 'png' : 'jpeg';
   const quality = clampViewport(options.quality, 72, 30, 95);
-  await session.cdp.call('Emulation.setDeviceMetricsOverride', {
-    width,
-    height,
-    deviceScaleFactor: 1,
-    mobile: false,
-    screenWidth: width,
-    screenHeight: height,
-  }, session.page.sessionId);
-  const result = await session.cdp.call('Page.captureScreenshot', {
-    format,
-    quality,
-    captureBeyondViewport: false,
-  }, session.page.sessionId);
+  await session.cdp.call(
+    'Emulation.setDeviceMetricsOverride',
+    {
+      width,
+      height,
+      deviceScaleFactor: 1,
+      mobile: false,
+      screenWidth: width,
+      screenHeight: height,
+    },
+    session.page.sessionId,
+  );
+  const result = await session.cdp.call(
+    'Page.captureScreenshot',
+    {
+      format,
+      quality,
+      captureBeyondViewport: false,
+    },
+    session.page.sessionId,
+  );
   const state = await currentPageState(session);
   const history = await navigationState(session);
   session.updatedAt = Date.now();
@@ -530,13 +601,20 @@ export async function reloadBrowser(session: BrowserSession) {
   session.updatedAt = Date.now();
 }
 
-export async function navigateBrowserHistory(session: BrowserSession, direction: 'back' | 'forward') {
+export async function navigateBrowserHistory(
+  session: BrowserSession,
+  direction: 'back' | 'forward',
+) {
   const history = await navigationState(session);
   const targetIndex = direction === 'back' ? history.currentIndex - 1 : history.currentIndex + 1;
   const target = history.entries[targetIndex];
   if (!isRecord(target) || target.id === undefined) return false;
   session.loading = true;
-  await session.cdp.call('Page.navigateToHistoryEntry', { entryId: target.id }, session.page.sessionId);
+  await session.cdp.call(
+    'Page.navigateToHistoryEntry',
+    { entryId: target.id },
+    session.page.sessionId,
+  );
   await waitForReady(session);
   session.loading = false;
   session.updatedAt = Date.now();
@@ -544,13 +622,16 @@ export async function navigateBrowserHistory(session: BrowserSession, direction:
 }
 
 export async function clickBrowser(session: BrowserSession, selector: string) {
-  const clicked = await evaluate(session, `(() => {
+  const clicked = await evaluate(
+    session,
+    `(() => {
     const el = document.querySelector(${JSON.stringify(selector)});
     if (!el) return false;
     el.scrollIntoView({ block: 'center', inline: 'center' });
     el.click();
     return true;
-  })()`);
+  })()`,
+  );
   if (!clicked) throw new Error(`selector not found: ${selector}`);
   await delay(300);
   session.updatedAt = Date.now();
@@ -559,15 +640,29 @@ export async function clickBrowser(session: BrowserSession, selector: string) {
 export async function clickBrowserPoint(session: BrowserSession, x: unknown, y: unknown) {
   const pointX = clampViewport(x, 0, 0, 2400);
   const pointY = clampViewport(y, 0, 0, 1800);
-  await session.cdp.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pointX, y: pointY }, session.page.sessionId);
-  await session.cdp.call('Input.dispatchMouseEvent', { type: 'mousePressed', x: pointX, y: pointY, button: 'left', clickCount: 1 }, session.page.sessionId);
-  await session.cdp.call('Input.dispatchMouseEvent', { type: 'mouseReleased', x: pointX, y: pointY, button: 'left', clickCount: 1 }, session.page.sessionId);
+  await session.cdp.call(
+    'Input.dispatchMouseEvent',
+    { type: 'mouseMoved', x: pointX, y: pointY },
+    session.page.sessionId,
+  );
+  await session.cdp.call(
+    'Input.dispatchMouseEvent',
+    { type: 'mousePressed', x: pointX, y: pointY, button: 'left', clickCount: 1 },
+    session.page.sessionId,
+  );
+  await session.cdp.call(
+    'Input.dispatchMouseEvent',
+    { type: 'mouseReleased', x: pointX, y: pointY, button: 'left', clickCount: 1 },
+    session.page.sessionId,
+  );
   await delay(250);
   session.updatedAt = Date.now();
 }
 
 export async function fillBrowser(session: BrowserSession, selector: string, text: string) {
-  const filled = await evaluate(session, `(() => {
+  const filled = await evaluate(
+    session,
+    `(() => {
     const el = document.querySelector(${JSON.stringify(selector)});
     if (!el) return false;
     el.scrollIntoView({ block: 'center', inline: 'center' });
@@ -581,7 +676,8 @@ export async function fillBrowser(session: BrowserSession, selector: string, tex
     el.textContent = ${JSON.stringify(text)};
     el.dispatchEvent(new InputEvent('input', { bubbles: true, data: ${JSON.stringify(text)} }));
     return true;
-  })()`);
+  })()`,
+  );
   if (!filled) throw new Error(`selector not found: ${selector}`);
   await delay(200);
   session.updatedAt = Date.now();
@@ -591,8 +687,16 @@ export async function typeBrowserText(session: BrowserSession, text: string) {
   if (!text) return;
   if (KEY_CODES[text]) {
     const key = KEY_CODES[text];
-    await session.cdp.call('Input.dispatchKeyEvent', { type: 'keyDown', ...key }, session.page.sessionId);
-    await session.cdp.call('Input.dispatchKeyEvent', { type: 'keyUp', ...key }, session.page.sessionId);
+    await session.cdp.call(
+      'Input.dispatchKeyEvent',
+      { type: 'keyDown', ...key },
+      session.page.sessionId,
+    );
+    await session.cdp.call(
+      'Input.dispatchKeyEvent',
+      { type: 'keyUp', ...key },
+      session.page.sessionId,
+    );
   } else {
     await session.cdp.call('Input.insertText', { text }, session.page.sessionId);
   }
@@ -600,14 +704,24 @@ export async function typeBrowserText(session: BrowserSession, text: string) {
   session.updatedAt = Date.now();
 }
 
-export async function scrollBrowser(session: BrowserSession, x: unknown, y: unknown, deltaX: unknown, deltaY: unknown) {
-  await session.cdp.call('Input.dispatchMouseEvent', {
-    type: 'mouseWheel',
-    x: clampViewport(x, 0, 0, 2400),
-    y: clampViewport(y, 0, 0, 1800),
-    deltaX: Number.isFinite(Number(deltaX)) ? Number(deltaX) : 0,
-    deltaY: Number.isFinite(Number(deltaY)) ? Number(deltaY) : 0,
-  }, session.page.sessionId);
+export async function scrollBrowser(
+  session: BrowserSession,
+  x: unknown,
+  y: unknown,
+  deltaX: unknown,
+  deltaY: unknown,
+) {
+  await session.cdp.call(
+    'Input.dispatchMouseEvent',
+    {
+      type: 'mouseWheel',
+      x: clampViewport(x, 0, 0, 2400),
+      y: clampViewport(y, 0, 0, 1800),
+      deltaX: Number.isFinite(Number(deltaX)) ? Number(deltaX) : 0,
+      deltaY: Number.isFinite(Number(deltaY)) ? Number(deltaY) : 0,
+    },
+    session.page.sessionId,
+  );
   await delay(100);
   session.updatedAt = Date.now();
 }
@@ -622,10 +736,15 @@ export async function screenshotBrowser(session: BrowserSession, allowUnsafeScre
   if (!allowUnsafeScreenshot) {
     return {
       redacted: true,
-      message: 'Screenshot bytes are disabled by default. Pass allowUnsafeScreenshot=true for explicit local capture.',
+      message:
+        'Screenshot bytes are disabled by default. Pass allowUnsafeScreenshot=true for explicit local capture.',
     };
   }
-  const result = await session.cdp.call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false }, session.page.sessionId);
+  const result = await session.cdp.call(
+    'Page.captureScreenshot',
+    { format: 'png', captureBeyondViewport: false },
+    session.page.sessionId,
+  );
   session.updatedAt = Date.now();
   return {
     redacted: false,

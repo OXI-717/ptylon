@@ -31,14 +31,17 @@ export async function POST(req: NextRequest) {
 
     const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}` },
+      headers: { Authorization: `Bearer ${apiKey}` },
       body: groqForm,
     });
 
     if (!res.ok) {
       const errText = await res.text();
       console.error('[Transcribe] Groq error:', res.status, errText);
-      return NextResponse.json({ error: 'Transcription failed', details: errText }, { status: 502 });
+      return NextResponse.json(
+        { error: 'Transcription failed', details: errText },
+        { status: 502 },
+      );
     }
 
     const data = await res.json();

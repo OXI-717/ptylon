@@ -89,7 +89,7 @@ export default function VoiceInput({ onTranscript, lang = 'ru' }: VoiceInputProp
     if (recording) {
       await stop();
       // Release mic
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     } else {
       await start();
@@ -112,7 +112,7 @@ export default function VoiceInput({ onTranscript, lang = 'ru' }: VoiceInputProp
   useEffect(() => {
     return () => {
       mediaRecorderRef.current?.stop();
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
@@ -124,7 +124,13 @@ export default function VoiceInput({ onTranscript, lang = 'ru' }: VoiceInputProp
         className={`hover:text-[#40E0D0] cursor-pointer flex items-center gap-1 ${
           recording ? 'text-red-400' : transcribing ? 'text-amber-400' : 'text-gray-500'
         }`}
-        title={recording ? 'Stop recording (Alt+M)' : transcribing ? 'Transcribing...' : 'Voice input (Alt+M)'}
+        title={
+          recording
+            ? 'Stop recording (Alt+M)'
+            : transcribing
+              ? 'Transcribing...'
+              : 'Voice input (Alt+M)'
+        }
       >
         {recording ? (
           <span className="flex items-center gap-1">
@@ -137,9 +143,7 @@ export default function VoiceInput({ onTranscript, lang = 'ru' }: VoiceInputProp
           '🎤'
         )}
       </button>
-      {error && (
-        <span className="text-red-400 text-xs">{error}</span>
-      )}
+      {error && <span className="text-red-400 text-xs">{error}</span>}
     </>
   );
 }

@@ -17,12 +17,20 @@ export async function sendGatewayRequest(
 ): Promise<Record<string, unknown>> {
   const token = signToken();
   const cid = `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
-  const ws = new WebSocket(WS_URL, { headers: { Cookie: `wc-token=${encodeURIComponent(token)}` } });
+  const ws = new WebSocket(WS_URL, {
+    headers: { Cookie: `wc-token=${encodeURIComponent(token)}` },
+  });
   try {
     await new Promise<void>((resolve, reject) => {
       const t = setTimeout(() => reject(new Error('gateway connection timeout')), timeoutMs);
-      ws.once('open', () => { clearTimeout(t); resolve(); });
-      ws.once('error', (e: Error) => { clearTimeout(t); reject(e); });
+      ws.once('open', () => {
+        clearTimeout(t);
+        resolve();
+      });
+      ws.once('error', (e: Error) => {
+        clearTimeout(t);
+        reject(e);
+      });
     });
 
     const responsePromise = new Promise<Record<string, unknown>>((resolve, reject) => {
@@ -35,8 +43,13 @@ export async function sendGatewayRequest(
           return; // ignore non-JSON frames
         }
         if (msg._cid !== cid) return;
-        if (msg.type === expectType) { clearTimeout(t); resolve(msg); }
-        else if (msg.type === 'error') { clearTimeout(t); reject(new Error(String(msg.data || 'gateway error'))); }
+        if (msg.type === expectType) {
+          clearTimeout(t);
+          resolve(msg);
+        } else if (msg.type === 'error') {
+          clearTimeout(t);
+          reject(new Error(String(msg.data || 'gateway error')));
+        }
       });
     });
 

@@ -22,12 +22,18 @@ describe('deploy/Dockerfile', () => {
 
     expect(dockerfile).toMatch(/amd64\|x86_64\)[\s\S]*agy_platform="linux_amd64"/);
     expect(dockerfile).toMatch(/arm64\|aarch64\)[\s\S]*agy_platform="linux_arm64"/);
-    expect(dockerfile).toContain('https://antigravity-cli-auto-updater-974169037036.us-central1.run.app');
+    expect(dockerfile).toContain(
+      'https://antigravity-cli-auto-updater-974169037036.us-central1.run.app',
+    );
     expect(dockerfile).toContain('/manifests/${agy_platform}.json');
     expect(dockerfile).toContain('sha512sum -c -');
-    expect(dockerfile).toContain('install -d -o ptylon -g ptylon /home/ptylon/.npm-global /home/ptylon/.npm-global/bin');
+    expect(dockerfile).toContain(
+      'install -d -o ptylon -g ptylon /home/ptylon/.npm-global /home/ptylon/.npm-global/bin',
+    );
     expect(dockerfile).toContain('*.tar.gz*) tar -xzf /tmp/agy-payload -C /tmp antigravity');
-    expect(dockerfile).toContain('install -m 0755 -o ptylon -g ptylon /tmp/antigravity /home/ptylon/.npm-global/bin/agy');
+    expect(dockerfile).toContain(
+      'install -m 0755 -o ptylon -g ptylon /tmp/antigravity /home/ptylon/.npm-global/bin/agy',
+    );
     expect(dockerfile).not.toContain('/home/ptylon/.local/bin/agy');
     expect(dockerfile).not.toContain('ln -sf /home/ptylon/.local/bin/agy');
   });

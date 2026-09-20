@@ -14,8 +14,16 @@ function isValidAdminClient(value: unknown): value is AdminClient {
   if (!value || typeof value !== 'object') return false;
 
   const client = value as Record<string, unknown>;
-  if (typeof client.name !== 'string' || typeof client.token !== 'string' || client.token.length === 0) return false;
-  if (client.expiresAt !== undefined && (typeof client.expiresAt !== 'number' || !Number.isFinite(client.expiresAt))) {
+  if (
+    typeof client.name !== 'string' ||
+    typeof client.token !== 'string' ||
+    client.token.length === 0
+  )
+    return false;
+  if (
+    client.expiresAt !== undefined &&
+    (typeof client.expiresAt !== 'number' || !Number.isFinite(client.expiresAt))
+  ) {
     return false;
   }
 
@@ -42,7 +50,11 @@ export function loadAdminClients(env: NodeJS.ProcessEnv = process.env): AdminCli
   }
 }
 
-export function matchClient(provided: string, clients: AdminClient[], nowMs: number): AdminClient | null {
+export function matchClient(
+  provided: string,
+  clients: AdminClient[],
+  nowMs: number,
+): AdminClient | null {
   if (provided.length === 0) return null;
 
   const providedHash = sha256Buffer(provided);

@@ -48,7 +48,10 @@ describe('buildEnvFile', () => {
 });
 
 describe('buildExecCommand', () => {
-  const cmd = buildExecCommand(validateExecRequest(goodBody), '/workspace/.agent-jobs/exec/e1/env.sh');
+  const cmd = buildExecCommand(
+    validateExecRequest(goodBody),
+    '/workspace/.agent-jobs/exec/e1/env.sh',
+  );
 
   it('sources the env file instead of inlining values (secrets must not hit scrollback)', () => {
     expect(cmd).toContain(`. '/workspace/.agent-jobs/exec/e1/env.sh'`);
@@ -57,7 +60,9 @@ describe('buildExecCommand', () => {
 
   it('runs the argv in cwd with output appended to log_path', () => {
     expect(cmd).toContain(`cd '/opt/autopilot/repos/oxi-skills/.worktrees/task-1' && `);
-    expect(cmd).toContain(`'claude' '-p' '--dangerously-skip-permissions' >> '/opt/autopilot/state/logs/task-1.log' 2>&1`);
+    expect(cmd).toContain(
+      `'claude' '-p' '--dangerously-skip-permissions' >> '/opt/autopilot/state/logs/task-1.log' 2>&1`,
+    );
   });
 
   it('writes {"rc", "nonce"} atomically (tmp+mv) and exits the session', () => {

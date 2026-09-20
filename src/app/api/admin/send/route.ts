@@ -8,12 +8,16 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const sessionId = String(body?.sessionId || '').trim();
-    const data = typeof body?.data === 'string' ? body.data : typeof body?.text === 'string' ? body.text : '';
+    const data =
+      typeof body?.data === 'string' ? body.data : typeof body?.text === 'string' ? body.text : '';
     if (!sessionId) return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
     if (!data) return NextResponse.json({ error: 'data is required' }, { status: 400 });
     await sendGatewayMessage({ type: 'input', sessionId, data });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Server error' },
+      { status: 500 },
+    );
   }
 }

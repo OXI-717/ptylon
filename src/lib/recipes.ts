@@ -41,7 +41,12 @@ export const BUILTIN_RECIPES: WorkspaceRecipe[] = [
     layout: 'hsplit3',
     tabs: [
       { type: 'terminal', name: 'htop', color: '#ff6b6b', command: 'htop' },
-      { type: 'terminal', name: 'logs', color: '#ffd43b', command: 'journalctl -f --no-pager -n 50' },
+      {
+        type: 'terminal',
+        name: 'logs',
+        color: '#ffd43b',
+        command: 'journalctl -f --no-pager -n 50',
+      },
       { type: 'terminal', name: 'shell', color: '#40E0D0' },
     ],
   },
@@ -72,9 +77,25 @@ export const BUILTIN_RECIPES: WorkspaceRecipe[] = [
     layout: 'quad',
     tabs: [
       { type: 'terminal', name: 'top', color: '#ff6b6b', command: 'top -d 2' },
-      { type: 'terminal', name: 'logs', color: '#ffd43b', command: 'journalctl -f --no-pager -n 30' },
-      { type: 'terminal', name: 'net', color: '#74c0fc', command: 'ss -tlnp; echo "---"; ss -tnp | head -20' },
-      { type: 'terminal', name: 'disk', color: '#69db7c', command: 'df -h; echo "---"; iostat -x 2 2>/dev/null || echo "iostat not installed, showing df -h loop"; watch -n 5 df -h' },
+      {
+        type: 'terminal',
+        name: 'logs',
+        color: '#ffd43b',
+        command: 'journalctl -f --no-pager -n 30',
+      },
+      {
+        type: 'terminal',
+        name: 'net',
+        color: '#74c0fc',
+        command: 'ss -tlnp; echo "---"; ss -tnp | head -20',
+      },
+      {
+        type: 'terminal',
+        name: 'disk',
+        color: '#69db7c',
+        command:
+          'df -h; echo "---"; iostat -x 2 2>/dev/null || echo "iostat not installed, showing df -h loop"; watch -n 5 df -h',
+      },
     ],
   },
 ];
@@ -89,7 +110,9 @@ function splitForTabs(tabs: Tab[], layout: RecipeLayout): SplitNode {
   }
   if (layout === 'hsplit') {
     return {
-      id: newId(), type: 'split', direction: 'horizontal',
+      id: newId(),
+      type: 'split',
+      direction: 'horizontal',
       children: [
         { id: newId(), type: 'leaf', tabId: tabs[0].id },
         { id: newId(), type: 'leaf', tabId: tabs[1]?.id || tabs[0].id },
@@ -99,11 +122,15 @@ function splitForTabs(tabs: Tab[], layout: RecipeLayout): SplitNode {
   }
   if (layout === 'hsplit3') {
     return {
-      id: newId(), type: 'split', direction: 'horizontal',
+      id: newId(),
+      type: 'split',
+      direction: 'horizontal',
       children: [
         { id: newId(), type: 'leaf', tabId: tabs[0].id },
         {
-          id: newId(), type: 'split', direction: 'vertical',
+          id: newId(),
+          type: 'split',
+          direction: 'vertical',
           children: [
             { id: newId(), type: 'leaf', tabId: tabs[1]?.id || tabs[0].id },
             { id: newId(), type: 'leaf', tabId: tabs[2]?.id || tabs[0].id },
@@ -116,10 +143,14 @@ function splitForTabs(tabs: Tab[], layout: RecipeLayout): SplitNode {
   }
 
   return {
-    id: newId(), type: 'split', direction: 'horizontal',
+    id: newId(),
+    type: 'split',
+    direction: 'horizontal',
     children: [
       {
-        id: newId(), type: 'split', direction: 'vertical',
+        id: newId(),
+        type: 'split',
+        direction: 'vertical',
         children: [
           { id: newId(), type: 'leaf', tabId: tabs[0].id },
           { id: newId(), type: 'leaf', tabId: tabs[1]?.id || tabs[0].id },
@@ -127,7 +158,9 @@ function splitForTabs(tabs: Tab[], layout: RecipeLayout): SplitNode {
         sizes: [50, 50],
       },
       {
-        id: newId(), type: 'split', direction: 'vertical',
+        id: newId(),
+        type: 'split',
+        direction: 'vertical',
         children: [
           { id: newId(), type: 'leaf', tabId: tabs[2]?.id || tabs[0].id },
           { id: newId(), type: 'leaf', tabId: tabs[3]?.id || tabs[0].id },
@@ -140,7 +173,8 @@ function splitForTabs(tabs: Tab[], layout: RecipeLayout): SplitNode {
 }
 
 export function buildWorkspaceFromRecipe(recipe: WorkspaceRecipe): Workspace {
-  const sourceTabs: RecipeTab[] = recipe.tabs.length > 0 ? recipe.tabs : [{ type: 'terminal', name: 'Terminal' }];
+  const sourceTabs: RecipeTab[] =
+    recipe.tabs.length > 0 ? recipe.tabs : [{ type: 'terminal', name: 'Terminal' }];
   const tabs: Tab[] = sourceTabs.map((tab, index) => ({
     id: newId(),
     type: (tab.type || 'terminal') as TabType,

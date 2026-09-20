@@ -5,7 +5,8 @@ import { resolveSafePath } from '@/lib/fs-security';
 
 export async function POST(req: NextRequest) {
   const token = req.cookies.get('wc-token')?.value;
-  if (!token || !verifyToken(token)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!token || !verifyToken(token))
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const { path: dirPath } = await req.json();
     if (!dirPath) return NextResponse.json({ error: 'path required' }, { status: 400 });

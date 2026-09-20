@@ -13,7 +13,8 @@ function getAppRoot(): string {
   return cwd;
 }
 
-const DB_PATH = process.env.WEB_CONSOLE_DB_PATH || path.join(getAppRoot(), 'data', 'web-console.db');
+const DB_PATH =
+  process.env.WEB_CONSOLE_DB_PATH || path.join(getAppRoot(), 'data', 'web-console.db');
 
 let db: Database.Database | null = null;
 
@@ -40,13 +41,17 @@ function getDb(): Database.Database {
 }
 
 export function loadWorkspaceState(): string | null {
-  const row = getDb().prepare('SELECT data FROM workspace_state WHERE id = ?').get('default') as { data: string } | undefined;
+  const row = getDb().prepare('SELECT data FROM workspace_state WHERE id = ?').get('default') as
+    | { data: string }
+    | undefined;
   return row?.data ?? null;
 }
 
 export function saveWorkspaceState(data: string): void {
-  getDb().prepare(`
+  getDb()
+    .prepare(`
     INSERT INTO workspace_state (id, data, updated_at) VALUES ('default', ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = datetime('now')
-  `).run(data);
+  `)
+    .run(data);
 }

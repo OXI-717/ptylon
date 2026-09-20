@@ -55,7 +55,11 @@ function getPhaseAtTime(date = new Date()): CircadianPhase {
   return 'late';
 }
 
-function phaseForMode(mode: CircadianMode, autoPhase: CircadianPhase, systemIsDark: boolean): CircadianPhase {
+function phaseForMode(
+  mode: CircadianMode,
+  autoPhase: CircadianPhase,
+  systemIsDark: boolean,
+): CircadianPhase {
   if (mode === 'auto') return autoPhase;
   if (mode === 'system') return systemIsDark ? 'night' : 'day';
   return mode;
@@ -70,7 +74,13 @@ function modeFromPhase(phase: CircadianPhase): CircadianMode {
 function readInitialMode(): CircadianMode {
   if (typeof window === 'undefined') return 'auto';
   const storedMode = localStorage.getItem(MODE_STORAGE_KEY);
-  if (storedMode === 'auto' || storedMode === 'day' || storedMode === 'evening' || storedMode === 'night' || storedMode === 'system') {
+  if (
+    storedMode === 'auto' ||
+    storedMode === 'day' ||
+    storedMode === 'evening' ||
+    storedMode === 'night' ||
+    storedMode === 'system'
+  ) {
     return storedMode;
   }
   const legacyPhase = localStorage.getItem(LEGACY_OVERRIDE_KEY);
@@ -112,7 +122,13 @@ function saveCustomPalettes(palettes: ThemePalette[]) {
 }
 
 function isCircadianMode(value: unknown): value is CircadianMode {
-  return value === 'auto' || value === 'day' || value === 'evening' || value === 'night' || value === 'system';
+  return (
+    value === 'auto' ||
+    value === 'day' ||
+    value === 'evening' ||
+    value === 'night' ||
+    value === 'system'
+  );
 }
 
 function applyPaletteVariables(palette: ThemePalette | null) {
@@ -139,9 +155,10 @@ export function useCircadianTheme(syncEnabled = false): CircadianTheme {
   const currentPhase = phaseForMode(mode, autoPhase, systemIsDark);
   const palettes = [...BUILT_IN_THEME_PALETTES, ...customPalettes];
   const effectivePaletteId = previewPaletteId || paletteId;
-  const activePalette = effectivePaletteId === CIRCADIAN_PALETTE_ID
-    ? null
-    : palettes.find((palette) => palette.id === effectivePaletteId) || null;
+  const activePalette =
+    effectivePaletteId === CIRCADIAN_PALETTE_ID
+      ? null
+      : palettes.find((palette) => palette.id === effectivePaletteId) || null;
 
   const updatePhase = useCallback(() => {
     setAutoPhase(getPhaseAtTime());
@@ -158,7 +175,7 @@ export function useCircadianTheme(syncEnabled = false): CircadianTheme {
       }
 
       const syncedPalettes = Array.isArray(settings.customPalettes)
-        ? settings.customPalettes.map(normalizeThemePalette).filter(Boolean) as ThemePalette[]
+        ? (settings.customPalettes.map(normalizeThemePalette).filter(Boolean) as ThemePalette[])
         : null;
       if (syncedPalettes) {
         const next = syncedPalettes.slice(-12);
@@ -167,19 +184,25 @@ export function useCircadianTheme(syncEnabled = false): CircadianTheme {
       }
 
       if (typeof settings.paletteId === 'string') {
-        const normalized = settings.paletteId === CIRCADIAN_PALETTE_ID ? CIRCADIAN_PALETTE_ID : sanitizeThemeId(settings.paletteId);
+        const normalized =
+          settings.paletteId === CIRCADIAN_PALETTE_ID
+            ? CIRCADIAN_PALETTE_ID
+            : sanitizeThemeId(settings.paletteId);
         setPreviewPaletteId(null);
         setPaletteIdState(normalized);
         localStorage.setItem(PALETTE_STORAGE_KEY, normalized);
       }
     } finally {
-      window.setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+      window.setTimeout(() => {
+        applyingRemoteRef.current = false;
+      }, 0);
     }
   }, []);
 
   useEffect(() => {
     const onWorkspaceSync = (event: Event) => {
-      const state = (event as CustomEvent<{ state?: { themeSettings?: ThemeSettings } }>).detail?.state;
+      const state = (event as CustomEvent<{ state?: { themeSettings?: ThemeSettings } }>).detail
+        ?.state;
       applySyncedTheme(state?.themeSettings);
     };
     window.addEventListener('web-console-workspace-sync', onWorkspaceSync);
@@ -201,10 +224,21 @@ export function useCircadianTheme(syncEnabled = false): CircadianTheme {
     document.documentElement.setAttribute('data-theme-palette', effectivePaletteId);
     applyPaletteVariables(activePalette);
     const themeConfig = activePalette || PHASE_CONFIG[currentPhase];
-    document.documentElement.setAttribute('data-terminal-tone', themeConfig.isDark ? 'dark' : 'light');
-    window.dispatchEvent(new CustomEvent('circadian-theme-change', {
-      detail: { phase: currentPhase, mode, paletteId: effectivePaletteId, palette: activePalette, ...themeConfig },
-    }));
+    document.documentElement.setAttribute(
+      'data-terminal-tone',
+      themeConfig.isDark ? 'dark' : 'light',
+    );
+    window.dispatchEvent(
+      new CustomEvent('circadian-theme-change', {
+        detail: {
+          phase: currentPhase,
+          mode,
+          paletteId: effectivePaletteId,
+          palette: activePalette,
+          ...themeConfig,
+        },
+      }),
+    );
   }, [activePalette, currentPhase, effectivePaletteId, mode]);
 
   // Update every 5 min
@@ -220,7 +254,10 @@ export function useCircadianTheme(syncEnabled = false): CircadianTheme {
   }, []);
 
   const setPalette = useCallback((nextPaletteId: string) => {
-    const normalized = nextPaletteId === CIRCADIAN_PALETTE_ID ? CIRCADIAN_PALETTE_ID : sanitizeThemeId(nextPaletteId);
+    const normalized =
+      nextPaletteId === CIRCADIAN_PALETTE_ID
+        ? CIRCADIAN_PALETTE_ID
+        : sanitizeThemeId(nextPaletteId);
     setPreviewPaletteId(null);
     setPaletteIdState(normalized);
     localStorage.setItem(PALETTE_STORAGE_KEY, normalized);
@@ -235,23 +272,31 @@ export function useCircadianTheme(syncEnabled = false): CircadianTheme {
     localStorage.removeItem(LEGACY_OVERRIDE_KEY);
   }, []);
 
-  const importPalette = useCallback((value: unknown) => {
-    const palette = normalizeThemePalette(value);
-    if (!palette) return null;
-    const existingIds = new Set([...BUILT_IN_THEME_PALETTES.map((item) => item.id), CIRCADIAN_PALETTE_ID]);
-    const safePalette = {
-      ...palette,
-      id: existingIds.has(palette.id) ? `${palette.id}-custom` : palette.id,
-      custom: true,
-    };
-    setCustomPalettes((current) => {
-      const next = [...current.filter((item) => item.id !== safePalette.id), safePalette].slice(-12);
-      saveCustomPalettes(next);
-      return next;
-    });
-    setPalette(safePalette.id);
-    return safePalette;
-  }, [setPalette]);
+  const importPalette = useCallback(
+    (value: unknown) => {
+      const palette = normalizeThemePalette(value);
+      if (!palette) return null;
+      const existingIds = new Set([
+        ...BUILT_IN_THEME_PALETTES.map((item) => item.id),
+        CIRCADIAN_PALETTE_ID,
+      ]);
+      const safePalette = {
+        ...palette,
+        id: existingIds.has(palette.id) ? `${palette.id}-custom` : palette.id,
+        custom: true,
+      };
+      setCustomPalettes((current) => {
+        const next = [...current.filter((item) => item.id !== safePalette.id), safePalette].slice(
+          -12,
+        );
+        saveCustomPalettes(next);
+        return next;
+      });
+      setPalette(safePalette.id);
+      return safePalette;
+    },
+    [setPalette],
+  );
 
   useEffect(() => {
     if (!syncEnabled || applyingRemoteRef.current) return;

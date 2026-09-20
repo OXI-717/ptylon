@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
   try {
     return NextResponse.json(await loadAllRecipes());
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Invalid .web-console.json' }, { status: 400 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid .web-console.json' },
+      { status: 400 },
+    );
   }
 }

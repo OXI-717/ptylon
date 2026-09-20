@@ -36,14 +36,20 @@ export async function POST(req: NextRequest) {
 
     if (action === 'open' || action === 'frame') {
       const session = await openOrNavigateBrowserSession({ url, sessionId });
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'pointClick') {
       if (!sessionId) return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
       const session = await openOrNavigateBrowserSession({ sessionId });
       await clickBrowserPoint(session, body?.x, body?.y);
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'reload' || action === 'back' || action === 'forward') {
@@ -52,7 +58,10 @@ export async function POST(req: NextRequest) {
       if (action === 'reload') await reloadBrowser(session);
       if (action === 'back') await navigateBrowserHistory(session, 'back');
       if (action === 'forward') await navigateBrowserHistory(session, 'forward');
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'type') {
@@ -60,18 +69,27 @@ export async function POST(req: NextRequest) {
       const text = typeof body?.text === 'string' ? body.text : '';
       const session = await openOrNavigateBrowserSession({ sessionId });
       await typeBrowserText(session, text);
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'scroll') {
       if (!sessionId) return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
       const session = await openOrNavigateBrowserSession({ sessionId });
       await scrollBrowser(session, body?.x, body?.y, body?.deltaX, body?.deltaY);
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     return NextResponse.json({ error: 'unknown action' }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Server error' },
+      { status: 500 },
+    );
   }
 }

@@ -4,7 +4,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { sendGatewayMessage } from '@/lib/admin-gateway';
 import { sendGatewayRequest } from '@/lib/admin-gateway-request';
-import { buildEnvFile, buildExecCommand, execEnvFilePath, execSessionRefPath, newExecId, validateExecRequest } from '@/lib/exec';
+import {
+  buildEnvFile,
+  buildExecCommand,
+  execEnvFilePath,
+  execSessionRefPath,
+  newExecId,
+  validateExecRequest,
+} from '@/lib/exec';
 import { resolveSafePath } from '@/lib/fs-security';
 
 // POST /api/admin/exec — run ONE argv to completion in a PTY bash session (headless engine
@@ -22,7 +29,10 @@ export async function POST(req: NextRequest) {
     try {
       parsed = validateExecRequest(await req.json());
     } catch (e) {
-      return NextResponse.json({ error: e instanceof Error ? e.message : 'invalid request' }, { status: 400 });
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : 'invalid request' },
+        { status: 400 },
+      );
     }
 
     const execId = newExecId();

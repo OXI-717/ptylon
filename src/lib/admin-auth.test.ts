@@ -63,7 +63,9 @@ describe('verifyAdminRequest', () => {
 
     expect(response).not.toBeNull();
     expect(response?.status).toBe(401);
-    expect(JSON.parse(readFileSync(auditLogPath, 'utf8').trim())).toMatchObject({ outcome: 'denied' });
+    expect(JSON.parse(readFileSync(auditLogPath, 'utf8').trim())).toMatchObject({
+      outcome: 'denied',
+    });
   });
 
   it('rejects a non-loopback x-forwarded-for when ADMIN_ALLOW_REMOTE is off', () => {
@@ -76,7 +78,9 @@ describe('verifyAdminRequest', () => {
 
     expect(response).not.toBeNull();
     expect(response?.status).toBe(403);
-    expect(JSON.parse(readFileSync(auditLogPath, 'utf8').trim())).toMatchObject({ outcome: 'denied' });
+    expect(JSON.parse(readFileSync(auditLogPath, 'utf8').trim())).toMatchObject({
+      outcome: 'denied',
+    });
   });
 
   it('allows a non-loopback x-forwarded-for when ADMIN_ALLOW_REMOTE=1', () => {

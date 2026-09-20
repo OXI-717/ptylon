@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
-type Entry = { name: string; path: string; type: 'dir' | 'file' | 'other'; size: number; mtime: string };
+type Entry = {
+  name: string;
+  path: string;
+  type: 'dir' | 'file' | 'other';
+  size: number;
+  mtime: string;
+};
 
 interface FileManagerProps {
   rootPath?: string;
@@ -39,7 +45,9 @@ export default function FileManager({ rootPath = '/', onOpenFile, navigateTo }: 
     setLoading(false);
   }, []);
 
-  useEffect(() => { void loadDir(currentPath); }, [currentPath, loadDir]);
+  useEffect(() => {
+    void loadDir(currentPath);
+  }, [currentPath, loadDir]);
 
   // Navigate to directory when external prop changes (e.g. switching editor tabs)
   useEffect(() => {
@@ -52,7 +60,10 @@ export default function FileManager({ rootPath = '/', onOpenFile, navigateTo }: 
     const parts = currentPath.split('/').filter(Boolean);
     const out: { label: string; path: string }[] = [{ label: '/', path: '/' }];
     let acc = '';
-    for (const p of parts) { acc += `/${p}`; out.push({ label: p, path: acc }); }
+    for (const p of parts) {
+      acc += `/${p}`;
+      out.push({ label: p, path: acc });
+    }
     return out;
   }, [currentPath]);
 
@@ -70,21 +81,33 @@ export default function FileManager({ rootPath = '/', onOpenFile, navigateTo }: 
   async function handleRename(oldPath: string) {
     const newPath = prompt('New path:', oldPath);
     if (!newPath || newPath === oldPath) return;
-    await fetch('/api/files/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPath, newPath }) });
+    await fetch('/api/files/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPath, newPath }),
+    });
     await loadDir(currentPath);
   }
 
   async function handleNewFile() {
     const name = prompt('File name:');
     if (!name) return;
-    await fetch('/api/files/write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: `${currentPath}/${name}`, content: '' }) });
+    await fetch('/api/files/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: `${currentPath}/${name}`, content: '' }),
+    });
     await loadDir(currentPath);
   }
 
   async function handleNewFolder() {
     const name = prompt('Folder name:');
     if (!name) return;
-    await fetch('/api/files/mkdir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: `${currentPath}/${name}` }) });
+    await fetch('/api/files/mkdir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: `${currentPath}/${name}` }),
+    });
     await loadDir(currentPath);
   }
 
@@ -102,7 +125,11 @@ export default function FileManager({ rootPath = '/', onOpenFile, navigateTo }: 
     formData.append('targetDir', currentPath);
     try {
       setUploadMsg('Uploading...');
-      const res = await fetch('/api/upload', { method: 'POST', body: formData, credentials: 'include' });
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
       const json = await res.json();
       if (json.ok) {
         setUploadMsg(`Uploaded ${json.files.length} file(s) to ${currentPath}`);
@@ -120,7 +147,11 @@ export default function FileManager({ rootPath = '/', onOpenFile, navigateTo }: 
     <div
       className={`h-full flex flex-col bg-[#0a0e14] text-gray-200 ${dragOver ? 'ring-2 ring-inset ring-[#40E0D0]' : ''}`}
       onClick={() => setMenu(null)}
-      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDragOver(true); }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setDragOver(true);
+      }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
     >
@@ -128,23 +159,48 @@ export default function FileManager({ rootPath = '/', onOpenFile, navigateTo }: 
       <div className="h-9 flex items-center justify-between px-3 border-b border-[#1a1e24] shrink-0">
         <span className="text-xs text-[#40E0D0] font-mono font-bold">FILES</span>
         <div className="flex gap-1">
-          <button onClick={handleNewFile} className="text-xs text-gray-500 hover:text-[#40E0D0] px-1" title="New File">+📄</button>
-          <button onClick={handleNewFolder} className="text-xs text-gray-500 hover:text-[#40E0D0] px-1" title="New Folder">+📁</button>
+          <button
+            onClick={handleNewFile}
+            className="text-xs text-gray-500 hover:text-[#40E0D0] px-1"
+            title="New File"
+          >
+            +📄
+          </button>
+          <button
+            onClick={handleNewFolder}
+            className="text-xs text-gray-500 hover:text-[#40E0D0] px-1"
+            title="New Folder"
+          >
+            +📁
+          </button>
         </div>
       </div>
 
       {/* Breadcrumbs */}
       <div className="px-2 py-1 text-[10px] font-mono flex gap-0.5 flex-wrap border-b border-[#1a1e24] shrink-0">
         {crumbs.map((c, i) => (
-          <button key={i} className="hover:text-[#40E0D0] text-gray-500" onClick={() => void loadDir(c.path)}>
-            {c.label}{i < crumbs.length - 1 ? ' /' : ''}
+          <button
+            key={i}
+            className="hover:text-[#40E0D0] text-gray-500"
+            onClick={() => void loadDir(c.path)}
+          >
+            {c.label}
+            {i < crumbs.length - 1 ? ' /' : ''}
           </button>
         ))}
       </div>
 
       {/* Upload status */}
-      {uploadMsg && <div className="px-2 py-1 text-[10px] text-[#40E0D0] font-mono bg-[#40E0D0]/5 border-b border-[#1a1e24]">{uploadMsg}</div>}
-      {dragOver && <div className="px-2 py-1 text-[10px] text-[#40E0D0] font-mono bg-[#40E0D0]/10 border-b border-[#1a1e24]">Drop files here → {currentPath}</div>}
+      {uploadMsg && (
+        <div className="px-2 py-1 text-[10px] text-[#40E0D0] font-mono bg-[#40E0D0]/5 border-b border-[#1a1e24]">
+          {uploadMsg}
+        </div>
+      )}
+      {dragOver && (
+        <div className="px-2 py-1 text-[10px] text-[#40E0D0] font-mono bg-[#40E0D0]/10 border-b border-[#1a1e24]">
+          Drop files here → {currentPath}
+        </div>
+      )}
 
       {/* Entries — virtual scroll for large directories */}
       <VirtualList
@@ -153,17 +209,65 @@ export default function FileManager({ rootPath = '/', onOpenFile, navigateTo }: 
         error={error}
         onReset={() => void loadDir(rootPath)}
         onClick={handleClick}
-        onContext={(e, item) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, item }); }}
+        onContext={(e, item) => {
+          e.preventDefault();
+          setMenu({ x: e.clientX, y: e.clientY, item });
+        }}
       />
 
       {/* Context menu */}
       {menu && (
-        <div className="fixed z-50 min-w-36 rounded border border-[#2a2e34] bg-[#0d1117] text-sm shadow-xl py-1" style={{ left: menu.x, top: menu.y }}>
-          <button className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24]" onClick={() => { handleClick(menu.item); setMenu(null); }}>Open</button>
-          {menu.item.type === 'file' && <button className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24]" onClick={() => { onOpenFile?.(menu.item.path); setMenu(null); }}>Edit</button>}
-          <button className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24]" onClick={() => { handleRename(menu.item.path); setMenu(null); }}>Rename</button>
-          <button className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24] text-red-400" onClick={() => { handleDelete(menu.item.path); setMenu(null); }}>Delete</button>
-          <button className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24]" onClick={() => { navigator.clipboard.writeText(menu.item.path); setMenu(null); }}>Copy Path</button>
+        <div
+          className="fixed z-50 min-w-36 rounded border border-[#2a2e34] bg-[#0d1117] text-sm shadow-xl py-1"
+          style={{ left: menu.x, top: menu.y }}
+        >
+          <button
+            className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24]"
+            onClick={() => {
+              handleClick(menu.item);
+              setMenu(null);
+            }}
+          >
+            Open
+          </button>
+          {menu.item.type === 'file' && (
+            <button
+              className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24]"
+              onClick={() => {
+                onOpenFile?.(menu.item.path);
+                setMenu(null);
+              }}
+            >
+              Edit
+            </button>
+          )}
+          <button
+            className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24]"
+            onClick={() => {
+              handleRename(menu.item.path);
+              setMenu(null);
+            }}
+          >
+            Rename
+          </button>
+          <button
+            className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24] text-red-400"
+            onClick={() => {
+              handleDelete(menu.item.path);
+              setMenu(null);
+            }}
+          >
+            Delete
+          </button>
+          <button
+            className="w-full text-left px-3 py-1.5 hover:bg-[#1a1e24]"
+            onClick={() => {
+              navigator.clipboard.writeText(menu.item.path);
+              setMenu(null);
+            }}
+          >
+            Copy Path
+          </button>
         </div>
       )}
     </div>
@@ -175,10 +279,23 @@ const ITEM_HEIGHT = 28; // px per row
 const OVERSCAN = 5;
 
 function iconForStatic(e: Entry) {
-  return e.type === 'dir' ? '📁' : /\.(png|jpe?g|gif|webp|svg)$/i.test(e.name) ? '🖼' : /\.(md|txt)$/i.test(e.name) ? '📝' : '📄';
+  return e.type === 'dir'
+    ? '📁'
+    : /\.(png|jpe?g|gif|webp|svg)$/i.test(e.name)
+      ? '🖼'
+      : /\.(md|txt)$/i.test(e.name)
+        ? '📝'
+        : '📄';
 }
 
-function VirtualList({ entries, loading, error, onReset, onClick, onContext }: {
+function VirtualList({
+  entries,
+  loading,
+  error,
+  onReset,
+  onClick,
+  onContext,
+}: {
   entries: Entry[];
   loading: boolean;
   error: string | null;
@@ -200,7 +317,10 @@ function VirtualList({ entries, loading, error, onReset, onClick, onContext }: {
 
   const totalHeight = entries.length * ITEM_HEIGHT;
   const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
-  const endIdx = Math.min(entries.length, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + OVERSCAN);
+  const endIdx = Math.min(
+    entries.length,
+    Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + OVERSCAN,
+  );
   const visible = entries.slice(startIdx, endIdx);
 
   return (
@@ -213,7 +333,9 @@ function VirtualList({ entries, loading, error, onReset, onClick, onContext }: {
       {error && (
         <div className="p-3 text-xs text-red-400">
           <span>Error: {error}</span>
-          <button onClick={onReset} className="ml-2 text-[#40E0D0] hover:underline">Reset</button>
+          <button onClick={onReset} className="ml-2 text-[#40E0D0] hover:underline">
+            Reset
+          </button>
         </div>
       )}
       <div style={{ height: totalHeight, position: 'relative' }}>
@@ -228,7 +350,9 @@ function VirtualList({ entries, loading, error, onReset, onClick, onContext }: {
             >
               <span className="text-xs">{iconForStatic(item)}</span>
               <span className="truncate flex-1">{item.name}</span>
-              {item.type === 'file' && <span className="text-[10px] text-gray-600">{(item.size / 1024).toFixed(1)}K</span>}
+              {item.type === 'file' && (
+                <span className="text-[10px] text-gray-600">{(item.size / 1024).toFixed(1)}K</span>
+              )}
             </div>
           ))}
         </div>

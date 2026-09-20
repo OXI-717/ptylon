@@ -11,9 +11,15 @@ export function verifyAdminRequest(req: NextRequest): NextResponse | null {
   const at = Date.now();
   const route = req.nextUrl.pathname;
   const method = req.method;
-  const allowRemote = process.env.ADMIN_ALLOW_REMOTE === '1' || process.env.ADMIN_ALLOW_REMOTE === 'true';
+  const allowRemote =
+    process.env.ADMIN_ALLOW_REMOTE === '1' || process.env.ADMIN_ALLOW_REMOTE === 'true';
 
-  const deny = (status: number, error: string, client: string | null, fingerprint: string): NextResponse => {
+  const deny = (
+    status: number,
+    error: string,
+    client: string | null,
+    fingerprint: string,
+  ): NextResponse => {
     appendAudit({ at, client, fingerprint, method, route, outcome: 'denied' });
     return NextResponse.json({ error }, { status });
   };
