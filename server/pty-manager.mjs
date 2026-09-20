@@ -42,12 +42,16 @@ function parseIdleTimeoutHours(value) {
 
   const hours = Number(value);
   if (!Number.isFinite(hours) || hours <= 0) {
-    console.warn(`[PTY] Invalid PTY_IDLE_TIMEOUT_HOURS=${JSON.stringify(value)}; using ${DEFAULT_IDLE_TIMEOUT_HOURS}h`);
+    console.warn(
+      `[PTY] Invalid PTY_IDLE_TIMEOUT_HOURS=${JSON.stringify(value)}; using ${DEFAULT_IDLE_TIMEOUT_HOURS}h`,
+    );
     return DEFAULT_IDLE_TIMEOUT_HOURS;
   }
 
   if (hours < MIN_IDLE_TIMEOUT_HOURS) {
-    console.warn(`[PTY] PTY_IDLE_TIMEOUT_HOURS=${hours}h is below minimum ${MIN_IDLE_TIMEOUT_HOURS}h; using ${MIN_IDLE_TIMEOUT_HOURS}h`);
+    console.warn(
+      `[PTY] PTY_IDLE_TIMEOUT_HOURS=${hours}h is below minimum ${MIN_IDLE_TIMEOUT_HOURS}h; using ${MIN_IDLE_TIMEOUT_HOURS}h`,
+    );
     return MIN_IDLE_TIMEOUT_HOURS;
   }
 
@@ -81,8 +85,11 @@ function readProcessCwd(pid, fallback) {
 
 async function processRows() {
   try {
-    const { stdout } = await execFileLimited('ps', ['-eo', 'pid=,ppid=,stat=,comm=,args='], { timeoutMs: 800 });
-    return stdout.split(/\r?\n/)
+    const { stdout } = await execFileLimited('ps', ['-eo', 'pid=,ppid=,stat=,comm=,args='], {
+      timeoutMs: 800,
+    });
+    return stdout
+      .split(/\r?\n/)
       .map((line) => line.match(/^\s*(\d+)\s+(\d+)\s+(\S+)\s+(\S+)\s*(.*)$/))
       .filter(Boolean)
       .map((match) => ({
@@ -122,12 +129,17 @@ function activeProcessForSession(rows, shellPid) {
 
 async function gitMetadata(cwd) {
   try {
-    const inside = await execFileLimited('git', ['-C', cwd, 'rev-parse', '--is-inside-work-tree'], { timeoutMs: 700 });
+    const inside = await execFileLimited('git', ['-C', cwd, 'rev-parse', '--is-inside-work-tree'], {
+      timeoutMs: 700,
+    });
     if (inside.stdout.trim() !== 'true') return null;
     const [root, branch, dirty] = await Promise.all([
       execFileLimited('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], { timeoutMs: 700 }),
       execFileLimited('git', ['-C', cwd, 'branch', '--show-current'], { timeoutMs: 700 }),
-      execFileLimited('git', ['-C', cwd, 'status', '--porcelain'], { timeoutMs: 1000, maxBuffer: 1024 * 1024 }),
+      execFileLimited('git', ['-C', cwd, 'status', '--porcelain'], {
+        timeoutMs: 1000,
+        maxBuffer: 1024 * 1024,
+      }),
     ]);
     return {
       root: root.stdout.trim(),
@@ -349,7 +361,9 @@ class PtyManager {
     const now = Date.now();
     for (const [id, session] of this.sessions) {
       if (now - session.lastActivity > IDLE_TIMEOUT_MS) {
-        console.log(`[PTY] Cleaning up idle session ${id} (inactive ${Math.round((now - session.lastActivity) / 3600000)}h)`);
+        console.log(
+          `[PTY] Cleaning up idle session ${id} (inactive ${Math.round((now - session.lastActivity) / 3600000)}h)`,
+        );
         session.pty.kill();
         this.sessions.delete(id);
       }

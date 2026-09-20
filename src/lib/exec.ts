@@ -42,7 +42,11 @@ export interface ExecRequest {
 export function validateExecRequest(body: unknown): ExecRequest {
   const b = (body ?? {}) as Record<string, unknown>;
   const argv = b.argv;
-  if (!Array.isArray(argv) || argv.length === 0 || !argv.every((a) => typeof a === 'string' && a.length > 0)) {
+  if (
+    !Array.isArray(argv) ||
+    argv.length === 0 ||
+    !argv.every((a) => typeof a === 'string' && a.length > 0)
+  ) {
     throw new Error('argv must be a non-empty array of non-empty strings');
   }
   const cwd = typeof b.cwd === 'string' ? b.cwd.trim() : '';
@@ -57,7 +61,8 @@ export function validateExecRequest(body: unknown): ExecRequest {
   if (typeof envRaw !== 'object' || Array.isArray(envRaw)) throw new Error('env must be an object');
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(envRaw)) {
-    if (!ENV_NAME_RE.test(k)) throw new Error(`env name ${JSON.stringify(k)} is not a valid identifier`);
+    if (!ENV_NAME_RE.test(k))
+      throw new Error(`env name ${JSON.stringify(k)} is not a valid identifier`);
     if (typeof v !== 'string') throw new Error(`env value for ${k} must be a string`);
     env[k] = v;
   }

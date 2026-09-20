@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "endOfLine": "lf",
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    ".next/",
+    "out/",
+    "coverage/",
+    "build/",
+    "test-results/",
+    "playwright-report/",
+    "**/next-env.d.ts",
+    ".worktrees/",
+    ".task-runner/",
+    "pnpm-lock.yaml",
+    "*.toml",
+    "*.md",
+    "*.yml",
+    "*.yaml"
+  ]
+}

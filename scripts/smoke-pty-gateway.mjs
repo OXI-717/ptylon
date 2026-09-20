@@ -104,7 +104,9 @@ async function waitFor(messages, predicate, label, timeoutMs = 5000) {
     if (found) return found;
     await wait(50);
   }
-  throw new Error(`Timed out waiting for ${label}. Messages:\n${JSON.stringify(messages, null, 2)}`);
+  throw new Error(
+    `Timed out waiting for ${label}. Messages:\n${JSON.stringify(messages, null, 2)}`,
+  );
 }
 
 async function run() {
@@ -118,45 +120,104 @@ async function run() {
     PTY_DAEMON_URL: `ws://127.0.0.1:${ptyPort}`,
   };
 
-  const daemon = await startProcess('pty daemon', ['server/pty-daemon.mjs'], daemonEnv, /PTY daemon listening/);
-  let gateway = await startProcess('ws gateway', ['server/ws-server.mjs'], gatewayEnv, /WebSocket gateway listening/);
+  const daemon = await startProcess(
+    'pty daemon',
+    ['server/pty-daemon.mjs'],
+    daemonEnv,
+    /PTY daemon listening/,
+  );
+  let gateway = await startProcess(
+    'ws gateway',
+    ['server/ws-server.mjs'],
+    gatewayEnv,
+    /WebSocket gateway listening/,
+  );
 
   await expectQueryTokenRejected();
 
   const first = await connectBrowser();
   first.ws.send(JSON.stringify({ type: 'create', cols: 80, rows: 24, _cid: 'smoke-create' }));
-  const created = await waitFor(first.messages, (m) => m.type === 'created' && m._cid === 'smoke-create', 'created');
+  const created = await waitFor(
+    first.messages,
+    (m) => m.type === 'created' && m._cid === 'smoke-create',
+    'created',
+  );
   const sessionId = created.sessionId;
-  await waitFor(first.messages, (m) => m.type === 'attached' && m.sessionId === sessionId, 'attached after create');
+  await waitFor(
+    first.messages,
+    (m) => m.type === 'attached' && m.sessionId === sessionId,
+    'attached after create',
+  );
 
   first.ws.send(JSON.stringify({ type: 'metadata', _cid: 'smoke-metadata-initial' }));
-  const initialMetadata = await waitFor(first.messages, (m) => m.type === 'metadata' && m._cid === 'smoke-metadata-initial', 'initial metadata');
+  const initialMetadata = await waitFor(
+    first.messages,
+    (m) => m.type === 'metadata' && m._cid === 'smoke-metadata-initial',
+    'initial metadata',
+  );
   const initialEntry = initialMetadata.data?.find((entry) => entry.sessionId === sessionId);
-  assert(initialEntry?.cwd === PROJECT_ROOT, `expected initial cwd ${PROJECT_ROOT}, got ${JSON.stringify(initialEntry)}`);
+  assert(
+    initialEntry?.cwd === PROJECT_ROOT,
+    `expected initial cwd ${PROJECT_ROOT}, got ${JSON.stringify(initialEntry)}`,
+  );
   if (existsSync(join(PROJECT_ROOT, '.git'))) {
-    assert(initialEntry?.git?.branch, `expected git branch metadata, got ${JSON.stringify(initialEntry)}`);
+    assert(
+      initialEntry?.git?.branch,
+      `expected git branch metadata, got ${JSON.stringify(initialEntry)}`,
+    );
   }
 
-  first.ws.send(JSON.stringify({ type: 'input', sessionId, data: 'printf "SMOKE_DAEMON_SURVIVAL\\n"\r' }));
-  await waitFor(first.messages, (m) => m.type === 'output' && String(m.data).includes('SMOKE_DAEMON_SURVIVAL'), 'first marker output');
+  first.ws.send(
+    JSON.stringify({ type: 'input', sessionId, data: 'printf "SMOKE_DAEMON_SURVIVAL\\n"\r' }),
+  );
+  await waitFor(
+    first.messages,
+    (m) => m.type === 'output' && String(m.data).includes('SMOKE_DAEMON_SURVIVAL'),
+    'first marker output',
+  );
   first.ws.send(JSON.stringify({ type: 'input', sessionId, data: 'cd /tmp\r' }));
   await wait(300);
   first.ws.send(JSON.stringify({ type: 'metadata', _cid: 'smoke-metadata-tmp' }));
-  const tmpMetadata = await waitFor(first.messages, (m) => m.type === 'metadata' && m._cid === 'smoke-metadata-tmp', 'metadata after cd /tmp');
+  const tmpMetadata = await waitFor(
+    first.messages,
+    (m) => m.type === 'metadata' && m._cid === 'smoke-metadata-tmp',
+    'metadata after cd /tmp',
+  );
   const tmpEntry = tmpMetadata.data?.find((entry) => entry.sessionId === sessionId);
   assert(tmpEntry?.cwd === '/tmp', `expected cwd /tmp after cd, got ${JSON.stringify(tmpEntry)}`);
   first.ws.close();
 
   await stopProcess(gateway);
-  gateway = await startProcess('ws gateway restart', ['server/ws-server.mjs'], gatewayEnv, /WebSocket gateway listening/);
+  gateway = await startProcess(
+    'ws gateway restart',
+    ['server/ws-server.mjs'],
+    gatewayEnv,
+    /WebSocket gateway listening/,
+  );
 
   const second = await connectBrowser();
-  second.ws.send(JSON.stringify({ type: 'attach', sessionId, cols: 80, rows: 24, _cid: 'smoke-attach' }));
-  await waitFor(second.messages, (m) => m.type === 'attached' && m._cid === 'smoke-attach', 'attached after gateway restart');
-  await waitFor(second.messages, (m) => m.type === 'scrollback' && String(m.data).includes('SMOKE_DAEMON_SURVIVAL'), 'scrollback after gateway restart');
+  second.ws.send(
+    JSON.stringify({ type: 'attach', sessionId, cols: 80, rows: 24, _cid: 'smoke-attach' }),
+  );
+  await waitFor(
+    second.messages,
+    (m) => m.type === 'attached' && m._cid === 'smoke-attach',
+    'attached after gateway restart',
+  );
+  await waitFor(
+    second.messages,
+    (m) => m.type === 'scrollback' && String(m.data).includes('SMOKE_DAEMON_SURVIVAL'),
+    'scrollback after gateway restart',
+  );
 
-  second.ws.send(JSON.stringify({ type: 'input', sessionId, data: 'printf "SMOKE_AFTER_REATTACH\\n"\r' }));
-  await waitFor(second.messages, (m) => m.type === 'output' && String(m.data).includes('SMOKE_AFTER_REATTACH'), 'output after reattach');
+  second.ws.send(
+    JSON.stringify({ type: 'input', sessionId, data: 'printf "SMOKE_AFTER_REATTACH\\n"\r' }),
+  );
+  await waitFor(
+    second.messages,
+    (m) => m.type === 'output' && String(m.data).includes('SMOKE_AFTER_REATTACH'),
+    'output after reattach',
+  );
   second.ws.send(JSON.stringify({ type: 'kill', sessionId }));
   second.ws.close();
 

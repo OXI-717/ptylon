@@ -14,11 +14,9 @@ describe('deploy/engines-entrypoint.sh', () => {
     const npmPrefix = path.join(root, 'npm-global');
     await mkdir(fakeBin);
     await mkdir(path.join(npmPrefix, 'bin'), { recursive: true });
-    await writeFile(
-      path.join(fakeBin, 'npm'),
-      '#!/usr/bin/env bash\nsleep 5\nexit 0\n',
-      { mode: 0o755 },
-    );
+    await writeFile(path.join(fakeBin, 'npm'), '#!/usr/bin/env bash\nsleep 5\nexit 0\n', {
+      mode: 0o755,
+    });
 
     const startedAt = Date.now();
     const result = await new Promise<{ stdout: string; elapsedMs: number }>((resolve, reject) => {

@@ -98,7 +98,9 @@ export function startPtyDaemon() {
     }
 
     ws.isAlive = true;
-    ws.on('pong', () => { ws.isAlive = true; });
+    ws.on('pong', () => {
+      ws.isAlive = true;
+    });
     send(ws, welcomePayload());
 
     ws.on('message', async (raw) => {

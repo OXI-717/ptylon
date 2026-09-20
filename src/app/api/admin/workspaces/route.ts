@@ -9,7 +9,13 @@ type WorkspaceState = {
   tabs?: unknown[];
   activeTabId?: string | null;
   splitTree?: unknown;
-  workspaces?: Array<{ id: string; name: string; tabs?: unknown[]; splitTree?: unknown; activeTabId?: string | null }>;
+  workspaces?: Array<{
+    id: string;
+    name: string;
+    tabs?: unknown[];
+    splitTree?: unknown;
+    activeTabId?: string | null;
+  }>;
   activeWorkspaceId?: string | null;
   sidebarOpen?: boolean;
   _version?: number;
@@ -18,11 +24,28 @@ type WorkspaceState = {
 
 function loadState(): WorkspaceState {
   const raw = loadWorkspaceState();
-  if (!raw) return { tabs: [], activeTabId: null, splitTree: null, workspaces: [], activeWorkspaceId: null, sidebarOpen: false, _version: 2 };
+  if (!raw)
+    return {
+      tabs: [],
+      activeTabId: null,
+      splitTree: null,
+      workspaces: [],
+      activeWorkspaceId: null,
+      sidebarOpen: false,
+      _version: 2,
+    };
   try {
     return JSON.parse(raw) as WorkspaceState;
   } catch {
-    return { tabs: [], activeTabId: null, splitTree: null, workspaces: [], activeWorkspaceId: null, sidebarOpen: false, _version: 2 };
+    return {
+      tabs: [],
+      activeTabId: null,
+      splitTree: null,
+      workspaces: [],
+      activeWorkspaceId: null,
+      sidebarOpen: false,
+      _version: 2,
+    };
   }
 }
 
@@ -45,18 +68,25 @@ export async function POST(req: NextRequest) {
   if (denied) return denied;
   try {
     const body = await req.json();
-    const recipeKey = String(body?.recipe || body?.recipeId || body?.name || '').trim().toLowerCase();
+    const recipeKey = String(body?.recipe || body?.recipeId || body?.name || '')
+      .trim()
+      .toLowerCase();
     if (!recipeKey) return NextResponse.json({ error: 'recipe is required' }, { status: 400 });
 
     const { recipes } = await loadAllRecipes();
-    const recipe = recipes.find((candidate) =>
-      candidate.id.toLowerCase() === recipeKey || candidate.name.toLowerCase() === recipeKey
+    const recipe = recipes.find(
+      (candidate) =>
+        candidate.id.toLowerCase() === recipeKey || candidate.name.toLowerCase() === recipeKey,
     );
-    if (!recipe) return NextResponse.json({ error: `Recipe not found: ${recipeKey}` }, { status: 404 });
+    if (!recipe)
+      return NextResponse.json({ error: `Recipe not found: ${recipeKey}` }, { status: 404 });
 
     const workspace = buildWorkspaceFromRecipe(recipe);
     const state = loadState();
-    const nextWorkspaces = [...(Array.isArray(state.workspaces) ? state.workspaces : []), workspace];
+    const nextWorkspaces = [
+      ...(Array.isArray(state.workspaces) ? state.workspaces : []),
+      workspace,
+    ];
     const nextState = {
       ...state,
       tabs: workspace.tabs,
@@ -72,7 +102,10 @@ export async function POST(req: NextRequest) {
     await sendGatewayMessage({ type: 'workspace_updated', workspaceId: workspace.id });
     return NextResponse.json({ ok: true, workspace });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Server error' },
+      { status: 500 },
+    );
   }
 }
 
@@ -93,9 +126,11 @@ export async function DELETE(req: NextRequest) {
     }
 
     const nextWorkspaces = workspaces.filter((workspace) => workspace.id !== id);
-    const activeWorkspace = state.activeWorkspaceId === id
-      ? nextWorkspaces[0]
-      : nextWorkspaces.find((workspace) => workspace.id === state.activeWorkspaceId) || nextWorkspaces[0];
+    const activeWorkspace =
+      state.activeWorkspaceId === id
+        ? nextWorkspaces[0]
+        : nextWorkspaces.find((workspace) => workspace.id === state.activeWorkspaceId) ||
+          nextWorkspaces[0];
     const nextState = {
       ...state,
       tabs: activeWorkspace.tabs || [],
@@ -111,6 +146,9 @@ export async function DELETE(req: NextRequest) {
     await sendGatewayMessage({ type: 'workspace_updated', workspaceId: activeWorkspace.id });
     return NextResponse.json({ ok: true, deleted: id, activeWorkspaceId: activeWorkspace.id });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Server error' },
+      { status: 500 },
+    );
   }
 }

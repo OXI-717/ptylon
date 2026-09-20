@@ -7,7 +7,10 @@ export interface TerminalNotificationPayload {
   body?: string;
 }
 
-export type Osc99State = Map<string, Partial<Pick<TerminalNotificationPayload, 'title' | 'subtitle' | 'body'>>>;
+export type Osc99State = Map<
+  string,
+  Partial<Pick<TerminalNotificationPayload, 'title' | 'subtitle' | 'body'>>
+>;
 
 const OSC_RE = /\x1b\]([^\x07\x1b]*)(?:\x07|\x1b\\)/g;
 
@@ -44,7 +47,10 @@ function parseOsc99(content: string, state: Osc99State): TerminalNotificationPay
   };
 }
 
-export function extractTerminalNotifications(data: string, osc99State: Osc99State = new Map()): TerminalNotificationPayload[] {
+export function extractTerminalNotifications(
+  data: string,
+  osc99State: Osc99State = new Map(),
+): TerminalNotificationPayload[] {
   const notifications: TerminalNotificationPayload[] = [];
   for (const match of data.matchAll(OSC_RE)) {
     const content = match[1] || '';
