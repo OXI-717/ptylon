@@ -74,9 +74,7 @@ export default function LoginPage({ onServerSynced }: LoginPageProps) {
           />
         </div>
 
-        {error && (
-          <div className="mb-4 text-red-400 text-sm font-mono text-center">{error}</div>
-        )}
+        {error && <div className="mb-4 text-red-400 text-sm font-mono text-center">{error}</div>}
 
         <button
           type="submit"

@@ -11,9 +11,12 @@ const composePath = path.join(repoRoot, 'docker-compose.yml');
 
 async function renderCompose(env: Record<string, string> = {}) {
   const composeText = await readFile(composePath, 'utf8');
-  return composeText.replace(/\$\{([A-Z0-9_]+):-([^}]+)\}/g, (_match, key: string, fallback: string) => {
-    return env[key] ?? fallback;
-  });
+  return composeText.replace(
+    /\$\{([A-Z0-9_]+):-([^}]+)\}/g,
+    (_match, key: string, fallback: string) => {
+      return env[key] ?? fallback;
+    },
+  );
 }
 
 async function createToolBin(scripts: Record<string, string>) {
@@ -65,7 +68,9 @@ function serviceBlock(composeText: string, service: 'app' | 'ws' | 'pty') {
   const nextService = service === 'app' ? 'ws' : service === 'ws' ? 'pty' : null;
   const start = composeText.indexOf(`  ${service}:\n`);
   expect(start).toBeGreaterThanOrEqual(0);
-  const end = nextService ? composeText.indexOf(`\n  ${nextService}:\n`, start + 1) : composeText.indexOf('\nvolumes:', start + 1);
+  const end = nextService
+    ? composeText.indexOf(`\n  ${nextService}:\n`, start + 1)
+    : composeText.indexOf('\nvolumes:', start + 1);
   expect(end).toBeGreaterThan(start);
   return composeText.slice(start, end);
 }
@@ -87,30 +92,32 @@ exit 0
 `,
   });
 
-  const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
-    const pathParts = [toolBinDir, tools.binDir, process.env.PATH].filter(Boolean);
-    const child = spawn('bash', [script, ...args], {
-      cwd: repoRoot,
-      env: {
-        ...process.env,
-        AUTH_PASSWORD: 'test-password-change-me',
-        PTYLON_INSTALL_ROOT: installRoot,
-        PTYLON_SYSTEMD_DIR: systemdDir,
-        PTYLON_REPO_DIR: repoRoot,
-        PATH: pathParts.join(path.delimiter),
-        ...extraEnv,
-      },
-    });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk) => {
-      stdout += chunk;
-    });
-    child.stderr.on('data', (chunk) => {
-      stderr += chunk;
-    });
-    child.on('close', (code) => resolve({ code, stdout, stderr }));
-  });
+  const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>(
+    (resolve) => {
+      const pathParts = [toolBinDir, tools.binDir, process.env.PATH].filter(Boolean);
+      const child = spawn('bash', [script, ...args], {
+        cwd: repoRoot,
+        env: {
+          ...process.env,
+          AUTH_PASSWORD: 'test-password-change-me',
+          PTYLON_INSTALL_ROOT: installRoot,
+          PTYLON_SYSTEMD_DIR: systemdDir,
+          PTYLON_REPO_DIR: repoRoot,
+          PATH: pathParts.join(path.delimiter),
+          ...extraEnv,
+        },
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', (chunk) => {
+        stdout += chunk;
+      });
+      child.stderr.on('data', (chunk) => {
+        stderr += chunk;
+      });
+      child.on('close', (code) => resolve({ code, stdout, stderr }));
+    },
+  );
 
   return { ...result, root, installRoot, systemdDir, tools };
 }
@@ -140,17 +147,31 @@ describe('deploy/bootstrap-host.sh', () => {
     expect(envText).toContain('PTYLON_WS_PORT=8791');
     expect(envText).toContain(`PTYLON_CODEX_HOME=${result.installRoot}/seats/codex-home`);
     expect(envText).toContain(`PTYLON_AGY_HOME=${result.installRoot}/seats/agy-home`);
-    expect(envText).toContain(`PTYLON_CLAUDE_JSON=${result.installRoot}/seats/claude-home/.claude.json`);
+    expect(envText).toContain(
+      `PTYLON_CLAUDE_JSON=${result.installRoot}/seats/claude-home/.claude.json`,
+    );
     expect(token).toMatch(/^[A-Za-z0-9_-]{43,}$/);
     expect((await stat(envPath)).mode & 0o777).toBe(0o600);
     expect((await stat(tokenPath)).mode & 0o777).toBe(0o600);
-    expect((await stat(path.join(result.installRoot, 'seats', 'codex-home'))).isDirectory()).toBe(true);
-    expect((await stat(path.join(result.installRoot, 'seats', 'claude-home'))).isDirectory()).toBe(true);
-    expect((await stat(path.join(result.installRoot, 'seats', 'opencode-home'))).isDirectory()).toBe(true);
-    expect((await stat(path.join(result.installRoot, 'seats', 'agy-home'))).isDirectory()).toBe(true);
-    expect((await stat(path.join(result.installRoot, 'seats', 'claude-home', '.claude.json'))).isFile()).toBe(true);
+    expect((await stat(path.join(result.installRoot, 'seats', 'codex-home'))).isDirectory()).toBe(
+      true,
+    );
+    expect((await stat(path.join(result.installRoot, 'seats', 'claude-home'))).isDirectory()).toBe(
+      true,
+    );
+    expect(
+      (await stat(path.join(result.installRoot, 'seats', 'opencode-home'))).isDirectory(),
+    ).toBe(true);
+    expect((await stat(path.join(result.installRoot, 'seats', 'agy-home'))).isDirectory()).toBe(
+      true,
+    );
+    expect(
+      (await stat(path.join(result.installRoot, 'seats', 'claude-home', '.claude.json'))).isFile(),
+    ).toBe(true);
     expect(unitText).toContain(`WorkingDirectory=${repoRoot}`);
-    expect(unitText).toContain(`docker compose --env-file ${envPath} -f ${path.join(repoRoot, 'docker-compose.yml')} up -d`);
+    expect(unitText).toContain(
+      `docker compose --env-file ${envPath} -f ${path.join(repoRoot, 'docker-compose.yml')} up -d`,
+    );
     expect(unitText).toContain('Restart=on-failure');
   });
 
@@ -231,58 +252,66 @@ exit 0
     await expect(stat(chownLog)).rejects.toThrow();
   });
 
-  it('is idempotent and keeps the admin token unless explicitly rotated', { timeout: 10000 }, async () => {
-    const first = await runBootstrap();
-    expect(first.code, first.stderr).toBe(0);
-    const tokenPath = path.join(first.installRoot, 'admin-token');
-    const originalToken = (await readFile(tokenPath, 'utf8')).trim();
+  it(
+    'is idempotent and keeps the admin token unless explicitly rotated',
+    { timeout: 10000 },
+    async () => {
+      const first = await runBootstrap();
+      expect(first.code, first.stderr).toBe(0);
+      const tokenPath = path.join(first.installRoot, 'admin-token');
+      const originalToken = (await readFile(tokenPath, 'utf8')).trim();
 
-    const second = await runBootstrap(
-      {
-        AUTH_PASSWORD: 'test-password-change-me',
-        PTYLON_INSTALL_ROOT: first.installRoot,
-        PTYLON_SYSTEMD_DIR: first.systemdDir,
-        PTYLON_REPO_DIR: repoRoot,
-      },
-      ['--render-only'],
-    );
-    expect(second.code, second.stderr).toBe(0);
-    expect((await readFile(tokenPath, 'utf8')).trim()).toBe(originalToken);
+      const second = await runBootstrap(
+        {
+          AUTH_PASSWORD: 'test-password-change-me',
+          PTYLON_INSTALL_ROOT: first.installRoot,
+          PTYLON_SYSTEMD_DIR: first.systemdDir,
+          PTYLON_REPO_DIR: repoRoot,
+        },
+        ['--render-only'],
+      );
+      expect(second.code, second.stderr).toBe(0);
+      expect((await readFile(tokenPath, 'utf8')).trim()).toBe(originalToken);
 
-    const rotated = await runBootstrap(
-      {
-        AUTH_PASSWORD: 'test-password-change-me',
-        PTYLON_INSTALL_ROOT: first.installRoot,
-        PTYLON_SYSTEMD_DIR: first.systemdDir,
-        PTYLON_REPO_DIR: repoRoot,
-      },
-      ['--render-only', '--rotate-token'],
-    );
-    expect(rotated.code, rotated.stderr).toBe(0);
-    expect((await readFile(tokenPath, 'utf8')).trim()).not.toBe(originalToken);
-  });
+      const rotated = await runBootstrap(
+        {
+          AUTH_PASSWORD: 'test-password-change-me',
+          PTYLON_INSTALL_ROOT: first.installRoot,
+          PTYLON_SYSTEMD_DIR: first.systemdDir,
+          PTYLON_REPO_DIR: repoRoot,
+        },
+        ['--render-only', '--rotate-token'],
+      );
+      expect(rotated.code, rotated.stderr).toBe(0);
+      expect((await readFile(tokenPath, 'utf8')).trim()).not.toBe(originalToken);
+    },
+  );
 
-  it('preserves quoted AUTH_PASSWORD values across idempotent runs', { timeout: 10000 }, async () => {
-    const authPassword = 'pass"with\\slashes';
-    const first = await runBootstrap({ AUTH_PASSWORD: authPassword });
-    expect(first.code, first.stderr).toBe(0);
-    const envPath = path.join(first.installRoot, '.env');
-    const firstEnv = await readFile(envPath, 'utf8');
-    expect(firstEnv).toContain('AUTH_PASSWORD="pass\\"with\\\\slashes"');
+  it(
+    'preserves quoted AUTH_PASSWORD values across idempotent runs',
+    { timeout: 10000 },
+    async () => {
+      const authPassword = 'pass"with\\slashes';
+      const first = await runBootstrap({ AUTH_PASSWORD: authPassword });
+      expect(first.code, first.stderr).toBe(0);
+      const envPath = path.join(first.installRoot, '.env');
+      const firstEnv = await readFile(envPath, 'utf8');
+      expect(firstEnv).toContain('AUTH_PASSWORD="pass\\"with\\\\slashes"');
 
-    const second = await runBootstrap(
-      {
-        AUTH_PASSWORD: '',
-        PTYLON_INSTALL_ROOT: first.installRoot,
-        PTYLON_SYSTEMD_DIR: first.systemdDir,
-        PTYLON_REPO_DIR: repoRoot,
-      },
-      ['--render-only'],
-    );
+      const second = await runBootstrap(
+        {
+          AUTH_PASSWORD: '',
+          PTYLON_INSTALL_ROOT: first.installRoot,
+          PTYLON_SYSTEMD_DIR: first.systemdDir,
+          PTYLON_REPO_DIR: repoRoot,
+        },
+        ['--render-only'],
+      );
 
-    expect(second.code, second.stderr).toBe(0);
-    expect(await readFile(envPath, 'utf8')).toContain('AUTH_PASSWORD="pass\\"with\\\\slashes"');
-  });
+      expect(second.code, second.stderr).toBe(0);
+      expect(await readFile(envPath, 'utf8')).toContain('AUTH_PASSWORD="pass\\"with\\\\slashes"');
+    },
+  );
 
   it('allows bootstrap resource defaults to be overridden by env', async () => {
     const result = await runBootstrap({
@@ -313,10 +342,16 @@ exit 0
     const composeText = await readFile(composePath, 'utf8');
 
     expect(serviceBlock(composeText, 'app')).toContain('HOSTNAME: 0.0.0.0');
-    expect(serviceBlock(composeText, 'app')).toContain('ADMIN_ALLOW_REMOTE: ${ADMIN_ALLOW_REMOTE:-0}');
+    expect(serviceBlock(composeText, 'app')).toContain(
+      'ADMIN_ALLOW_REMOTE: ${ADMIN_ALLOW_REMOTE:-0}',
+    );
     expect(composeText).toMatch(/app:[\s\S]*ENGINES: \${ENGINES:-codex}/);
-    expect(composeText).toContain('${PTYLON_OPENCODE_HOME:-/opt/ptylon/seats/opencode-home}:/home/ptylon/.local');
-    expect(composeText).toContain('${PTYLON_CLAUDE_JSON:-/opt/ptylon/seats/claude-home/.claude.json}:/home/ptylon/.claude.json');
+    expect(composeText).toContain(
+      '${PTYLON_OPENCODE_HOME:-/opt/ptylon/seats/opencode-home}:/home/ptylon/.local',
+    );
+    expect(composeText).toContain(
+      '${PTYLON_CLAUDE_JSON:-/opt/ptylon/seats/claude-home/.claude.json}:/home/ptylon/.claude.json',
+    );
   });
 
   it('renders app bind and admin remote mode through docker compose config', async () => {

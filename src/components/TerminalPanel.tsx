@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import type { Terminal } from '@xterm/xterm';
 import type { ITheme } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
-import { extractTerminalNotifications, type Osc99State, type TerminalNotificationPayload } from '@/lib/terminal-notifications';
+import {
+  extractTerminalNotifications,
+  type Osc99State,
+  type TerminalNotificationPayload,
+} from '@/lib/terminal-notifications';
 
 interface TerminalPanelProps {
   sessionId: string | null;
@@ -65,7 +69,15 @@ function getTerminalTheme(): ITheme {
   };
 }
 
-export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreated, onNotification, cwd, initCommand }: TerminalPanelProps) {
+export default function TerminalPanel({
+  sessionId,
+  ws,
+  isActive,
+  onSessionCreated,
+  onNotification,
+  cwd,
+  initCommand,
+}: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -158,34 +170,48 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
         }
         if (e.type === 'keydown' && e.ctrlKey && e.key.toLowerCase() === 'v') {
           // Try to read clipboard for images via async API
-          navigator.clipboard.read().then(async (clipItems) => {
-            for (const clipItem of clipItems) {
-              const imageType = clipItem.types.find(t => t.startsWith('image/'));
-              if (imageType) {
-                const blob = await clipItem.getType(imageType);
-                const ts = Date.now();
-                const ext = imageType.split('/')[1] || 'png';
-                const formData = new FormData();
-                formData.append('files', new File([blob], `clipboard-${ts}.${ext}`, { type: imageType }));
-                if (DEFAULT_UPLOAD_DIR) formData.append('targetDir', DEFAULT_UPLOAD_DIR);
-                try {
-                  const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                  const data = await res.json();
-                  if (data.ok && data.files?.[0]?.path) {
-                    const sock = wsRef.current;
-                    const sid = sessionIdRef.current;
-                    if (sock && sock.readyState === WebSocket.OPEN && sid) {
-                      sock.send(JSON.stringify({ type: 'input', sessionId: sid, data: data.files[0].path + ' ' }));
+          navigator.clipboard
+            .read()
+            .then(async (clipItems) => {
+              for (const clipItem of clipItems) {
+                const imageType = clipItem.types.find((t) => t.startsWith('image/'));
+                if (imageType) {
+                  const blob = await clipItem.getType(imageType);
+                  const ts = Date.now();
+                  const ext = imageType.split('/')[1] || 'png';
+                  const formData = new FormData();
+                  formData.append(
+                    'files',
+                    new File([blob], `clipboard-${ts}.${ext}`, { type: imageType }),
+                  );
+                  if (DEFAULT_UPLOAD_DIR) formData.append('targetDir', DEFAULT_UPLOAD_DIR);
+                  try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (data.ok && data.files?.[0]?.path) {
+                      const sock = wsRef.current;
+                      const sid = sessionIdRef.current;
+                      if (sock && sock.readyState === WebSocket.OPEN && sid) {
+                        sock.send(
+                          JSON.stringify({
+                            type: 'input',
+                            sessionId: sid,
+                            data: data.files[0].path + ' ',
+                          }),
+                        );
+                      }
                     }
+                  } catch {
+                    /* upload failed */
                   }
-                } catch { /* upload failed */ }
-                return;
+                  return;
+                }
               }
-            }
-            // No image — let xterm handle text paste normally (already happened)
-          }).catch(() => {
-            // Clipboard API denied — xterm handles text paste as fallback
-          });
+              // No image — let xterm handle text paste normally (already happened)
+            })
+            .catch(() => {
+              // Clipboard API denied — xterm handles text paste as fallback
+            });
           // Return true to let xterm also handle the event (for text paste)
           // The image handler above runs async and won't conflict
           return true;
@@ -208,17 +234,23 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
           if (text) {
             sock.send(JSON.stringify({ type: 'input', sessionId: sid, data: text }));
           }
-        } catch { /* clipboard access denied */ }
+        } catch {
+          /* clipboard access denied */
+        }
       };
       containerRef.current!.addEventListener('contextmenu', onContextMenu);
 
       // Click-to-position cursor: document-level CAPTURE phase
       // xterm.js stopPropagation() on its elements — only capture phase works reliably
-      let mouseDownX = 0, mouseDownY = 0;
+      let mouseDownX = 0,
+        mouseDownY = 0;
       const container = containerRef.current!;
       const onDocMouseDown = (e: MouseEvent) => {
         if (!container.contains(e.target as Node)) return;
-        if (e.button === 0) { mouseDownX = e.clientX; mouseDownY = e.clientY; }
+        if (e.button === 0) {
+          mouseDownX = e.clientX;
+          mouseDownY = e.clientY;
+        }
       };
       const onDocMouseUp = (e: MouseEvent) => {
         if (!container.contains(e.target as Node)) return;
@@ -255,7 +287,8 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
 
           const clickCol = Math.floor((e.clientX - rect.left) / cellWidth);
           const clickRow = Math.floor((e.clientY - rect.top) / cellHeight);
-          if (clickRow < 0 || clickRow >= term.rows || clickCol < 0 || clickCol >= term.cols) return;
+          if (clickRow < 0 || clickRow >= term.rows || clickCol < 0 || clickCol >= term.cols)
+            return;
 
           const cursorY = term.buffer.active.cursorY;
           const cursorX = term.buffer.active.cursorX;
@@ -266,7 +299,9 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
           if (delta === 0) return;
 
           const arrow = delta > 0 ? '\x1b[C' : '\x1b[D';
-          sock.send(JSON.stringify({ type: 'input', sessionId: sid, data: arrow.repeat(Math.abs(delta)) }));
+          sock.send(
+            JSON.stringify({ type: 'input', sessionId: sid, data: arrow.repeat(Math.abs(delta)) }),
+          );
         }, 50);
       };
       document.addEventListener('mousedown', onDocMouseDown, true);
@@ -285,10 +320,25 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
           return;
         }
         if (sessionIdRef.current) {
-          sock.send(JSON.stringify({ type: 'attach', sessionId: sessionIdRef.current, cols: term.cols, rows: term.rows }));
+          sock.send(
+            JSON.stringify({
+              type: 'attach',
+              sessionId: sessionIdRef.current,
+              cols: term.cols,
+              rows: term.rows,
+            }),
+          );
         } else if (!createInFlightRef.current) {
           createInFlightRef.current = true;
-          sock.send(JSON.stringify({ type: 'create', cols: term.cols, rows: term.rows, cwd: cwdRef.current, _cid: correlationIdRef.current }));
+          sock.send(
+            JSON.stringify({
+              type: 'create',
+              cols: term.cols,
+              rows: term.rows,
+              cwd: cwdRef.current,
+              _cid: correlationIdRef.current,
+            }),
+          );
         }
       }
       trySendInit();
@@ -311,7 +361,14 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
             const sock = wsRef.current;
             const sid = sessionIdRef.current;
             if (sock && sock.readyState === WebSocket.OPEN && sid) {
-              sock.send(JSON.stringify({ type: 'resize', sessionId: sid, cols: term.cols, rows: term.rows }));
+              sock.send(
+                JSON.stringify({
+                  type: 'resize',
+                  sessionId: sid,
+                  cols: term.cols,
+                  rows: term.rows,
+                }),
+              );
             }
           }, 100);
         }
@@ -354,7 +411,13 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
             const sock = wsRef.current;
             if (sock && sock.readyState === WebSocket.OPEN) {
               setTimeout(() => {
-                sock.send(JSON.stringify({ type: 'input', sessionId: msg.sessionId, data: initCommandRef.current + '\n' }));
+                sock.send(
+                  JSON.stringify({
+                    type: 'input',
+                    sessionId: msg.sessionId,
+                    data: initCommandRef.current + '\n',
+                  }),
+                );
               }, 300); // small delay for shell to be ready
             }
           }
@@ -371,7 +434,10 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
           case 'output':
             if (termRef.current) {
               const data = String(msg.data || '');
-              for (const notification of extractTerminalNotifications(data, osc99StateRef.current)) {
+              for (const notification of extractTerminalNotifications(
+                data,
+                osc99StateRef.current,
+              )) {
                 onNotificationRef.current?.(notification);
               }
               termRef.current.write(data);
@@ -407,24 +473,28 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
     if (sid) {
       setStatus('connected');
       // WS changed but we have an existing sessionId — re-attach to get scrollback
-      ws.send(JSON.stringify({
-        type: 'attach',
-        sessionId: sid,
-        cols: termRef.current?.cols,
-        rows: termRef.current?.rows,
-      }));
+      ws.send(
+        JSON.stringify({
+          type: 'attach',
+          sessionId: sid,
+          cols: termRef.current?.cols,
+          rows: termRef.current?.rows,
+        }),
+      );
       return;
     }
     if (!termRef.current || createInFlightRef.current) return;
     setStatus('connecting');
     createInFlightRef.current = true;
-    ws.send(JSON.stringify({
-      type: 'create',
-      cols: termRef.current.cols,
-      rows: termRef.current.rows,
-      cwd: cwdRef.current,
-      _cid: correlationIdRef.current,
-    }));
+    ws.send(
+      JSON.stringify({
+        type: 'create',
+        cols: termRef.current.cols,
+        rows: termRef.current.rows,
+        cwd: cwdRef.current,
+        _cid: correlationIdRef.current,
+      }),
+    );
   }, [ws, sessionId]);
 
   useEffect(() => {
@@ -455,8 +525,8 @@ export default function TerminalPanel({ sessionId, ws, isActive, onSessionCreate
             status === 'connected'
               ? 'bg-green-400 animate-pulse'
               : status === 'connecting'
-              ? 'bg-amber-400 animate-pulse'
-              : 'bg-red-400'
+                ? 'bg-amber-400 animate-pulse'
+                : 'bg-red-400'
           }`}
         />
         <span className="text-xs text-gray-500 font-mono">{status}</span>

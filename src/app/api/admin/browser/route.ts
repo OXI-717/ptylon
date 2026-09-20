@@ -36,11 +36,28 @@ type WorkspaceState = {
 
 function loadState(): WorkspaceState {
   const raw = loadWorkspaceState();
-  if (!raw) return { tabs: [], activeTabId: null, splitTree: null, workspaces: [], activeWorkspaceId: null, sidebarOpen: false, _version: 2 };
+  if (!raw)
+    return {
+      tabs: [],
+      activeTabId: null,
+      splitTree: null,
+      workspaces: [],
+      activeWorkspaceId: null,
+      sidebarOpen: false,
+      _version: 2,
+    };
   try {
     return JSON.parse(raw) as WorkspaceState;
   } catch {
-    return { tabs: [], activeTabId: null, splitTree: null, workspaces: [], activeWorkspaceId: null, sidebarOpen: false, _version: 2 };
+    return {
+      tabs: [],
+      activeTabId: null,
+      splitTree: null,
+      workspaces: [],
+      activeWorkspaceId: null,
+      sidebarOpen: false,
+      _version: 2,
+    };
   }
 }
 
@@ -115,7 +132,10 @@ export async function POST(req: NextRequest) {
     const sessionId = typeof body?.sessionId === 'string' ? body.sessionId : undefined;
 
     if (action === 'panelOpen') {
-      const opened = await openPanel(normalizeUrl(body?.url), typeof body?.name === 'string' ? body.name : undefined);
+      const opened = await openPanel(
+        normalizeUrl(body?.url),
+        typeof body?.name === 'string' ? body.name : undefined,
+      );
       return NextResponse.json({ ok: true, ...opened });
     }
 
@@ -131,7 +151,10 @@ export async function POST(req: NextRequest) {
 
     if (action === 'frame') {
       const session = await openOrNavigateBrowserSession({ url, sessionId });
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'click') {
@@ -147,7 +170,10 @@ export async function POST(req: NextRequest) {
       if (!sessionId) return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
       const session = await openOrNavigateBrowserSession({ sessionId });
       await clickBrowserPoint(session, body?.x, body?.y);
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'reload' || action === 'back' || action === 'forward') {
@@ -156,7 +182,10 @@ export async function POST(req: NextRequest) {
       if (action === 'reload') await reloadBrowser(session);
       if (action === 'back') await navigateBrowserHistory(session, 'back');
       if (action === 'forward') await navigateBrowserHistory(session, 'forward');
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'fill') {
@@ -174,14 +203,20 @@ export async function POST(req: NextRequest) {
       const text = typeof body?.text === 'string' ? body.text : '';
       const session = await openOrNavigateBrowserSession({ sessionId });
       await typeBrowserText(session, text);
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'scroll') {
       if (!sessionId) return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
       const session = await openOrNavigateBrowserSession({ sessionId });
       await scrollBrowser(session, body?.x, body?.y, body?.deltaX, body?.deltaY);
-      return NextResponse.json({ ok: true, frame: await frameBrowser(session, { width: body?.width, height: body?.height }) });
+      return NextResponse.json({
+        ok: true,
+        frame: await frameBrowser(session, { width: body?.width, height: body?.height }),
+      });
     }
 
     if (action === 'eval') {
@@ -190,20 +225,33 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'eval requires allowUnsafeEval=true' }, { status: 400 });
       }
       const expression = typeof body?.expression === 'string' ? body.expression : '';
-      if (!expression) return NextResponse.json({ error: 'expression is required' }, { status: 400 });
+      if (!expression)
+        return NextResponse.json({ error: 'expression is required' }, { status: 400 });
       const session = await openOrNavigateBrowserSession({ sessionId });
-      return NextResponse.json({ ok: true, sessionId, value: await evalBrowser(session, expression) });
+      return NextResponse.json({
+        ok: true,
+        sessionId,
+        value: await evalBrowser(session, expression),
+      });
     }
 
     if (action === 'screenshot') {
       const session = await openOrNavigateBrowserSession({ url, sessionId });
-      return NextResponse.json({ ok: true, sessionId: session.id, screenshot: await screenshotBrowser(session, body?.allowUnsafeScreenshot === true) });
+      return NextResponse.json({
+        ok: true,
+        sessionId: session.id,
+        screenshot: await screenshotBrowser(session, body?.allowUnsafeScreenshot === true),
+      });
     }
 
     if (action === 'console') {
       const session = await openOrNavigateBrowserSession({ url, sessionId });
       const snapshot = await snapshotBrowser(session);
-      return NextResponse.json({ ok: true, sessionId: session.id, consoleErrors: snapshot.consoleErrors });
+      return NextResponse.json({
+        ok: true,
+        sessionId: session.id,
+        consoleErrors: snapshot.consoleErrors,
+      });
     }
 
     if (action === 'close') {
@@ -217,6 +265,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'unknown action' }, { status: 400 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Server error' },
+      { status: 500 },
+    );
   }
 }

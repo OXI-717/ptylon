@@ -32,7 +32,7 @@ export const THEME_VARIABLE_NAMES = [
   '--blue-reduction',
 ] as const;
 
-export type ThemeVariableName = typeof THEME_VARIABLE_NAMES[number];
+export type ThemeVariableName = (typeof THEME_VARIABLE_NAMES)[number];
 
 export interface ThemePalette {
   id: string;
@@ -210,7 +210,13 @@ export const BUILT_IN_THEME_PALETTES: ThemePalette[] = [
 ];
 
 export function sanitizeThemeId(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'custom-theme';
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'custom-theme'
+  );
 }
 
 export function normalizeThemePalette(value: unknown): ThemePalette | null {
@@ -225,12 +231,16 @@ export function normalizeThemePalette(value: unknown): ThemePalette | null {
       variables[key] = variable.trim();
     }
   }
-  if (!variables['--background'] || !variables['--foreground'] || !variables['--accent']) return null;
+  if (!variables['--background'] || !variables['--foreground'] || !variables['--accent'])
+    return null;
   const id = sanitizeThemeId(typeof candidate.id === 'string' ? candidate.id : candidate.name);
   return {
     id,
     name: candidate.name.trim().slice(0, 80),
-    description: typeof candidate.description === 'string' ? candidate.description.trim().slice(0, 180) : 'Imported theme',
+    description:
+      typeof candidate.description === 'string'
+        ? candidate.description.trim().slice(0, 180)
+        : 'Imported theme',
     colorTemp: typeof candidate.colorTemp === 'number' ? candidate.colorTemp : 5600,
     isDark: Boolean(candidate.isDark),
     variables,

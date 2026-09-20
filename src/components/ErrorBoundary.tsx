@@ -30,7 +30,9 @@ export default class ErrorBoundary extends Component<Props, State> {
         <div className="h-full flex items-center justify-center bg-[#0a0e14] text-gray-400">
           <div className="text-center p-6">
             <div className="text-2xl mb-2 text-red-400">⚠</div>
-            <p className="text-sm font-mono mb-1">{this.props.fallbackLabel || 'Component'} crashed</p>
+            <p className="text-sm font-mono mb-1">
+              {this.props.fallbackLabel || 'Component'} crashed
+            </p>
             <p className="text-xs text-gray-600 mb-3 max-w-xs">{this.state.error}</p>
             <button
               onClick={() => {

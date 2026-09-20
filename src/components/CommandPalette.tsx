@@ -15,7 +15,14 @@ interface CommandPaletteProps {
 }
 
 export default function CommandPalette({
-  open, recipes, onClose, onRunRecipe, onNewTerminal, onNewBrowser, onToggleSidebar, onOpenThemeGallery,
+  open,
+  recipes,
+  onClose,
+  onRunRecipe,
+  onNewTerminal,
+  onNewBrowser,
+  onToggleSidebar,
+  onOpenThemeGallery,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -27,31 +34,69 @@ export default function CommandPalette({
 
   const commands = useMemo(() => {
     const builtins = [
-      { id: 'new-terminal', label: 'New terminal', hint: 'Open terminal in active pane', run: onNewTerminal },
-      { id: 'new-browser', label: 'New browser', hint: 'Open browser preview panel', run: onNewBrowser },
-      { id: 'toggle-sidebar', label: 'Toggle workspaces', hint: 'Show or hide workspace sidebar', run: onToggleSidebar },
-      { id: 'theme-gallery', label: 'Theme gallery', hint: 'Preview, apply, import, and export themes', run: onOpenThemeGallery },
+      {
+        id: 'new-terminal',
+        label: 'New terminal',
+        hint: 'Open terminal in active pane',
+        run: onNewTerminal,
+      },
+      {
+        id: 'new-browser',
+        label: 'New browser',
+        hint: 'Open browser preview panel',
+        run: onNewBrowser,
+      },
+      {
+        id: 'toggle-sidebar',
+        label: 'Toggle workspaces',
+        hint: 'Show or hide workspace sidebar',
+        run: onToggleSidebar,
+      },
+      {
+        id: 'theme-gallery',
+        label: 'Theme gallery',
+        hint: 'Preview, apply, import, and export themes',
+        run: onOpenThemeGallery,
+      },
     ];
     const recipeCommands = recipes.map((recipe) => ({
       id: `recipe-${recipe.id}`,
       label: recipe.name,
-      hint: recipe.description || `${recipe.tabs.length} pane${recipe.tabs.length === 1 ? '' : 's'}`,
+      hint:
+        recipe.description || `${recipe.tabs.length} pane${recipe.tabs.length === 1 ? '' : 's'}`,
       run: () => onRunRecipe(recipe),
     }));
     const q = query.trim().toLowerCase();
-    return [...builtins, ...recipeCommands].filter((command) => {
-      if (!q) return true;
-      return `${command.label} ${command.hint}`.toLowerCase().includes(q);
-    }).slice(0, 12);
-  }, [onNewBrowser, onNewTerminal, onOpenThemeGallery, onRunRecipe, onToggleSidebar, query, recipes]);
+    return [...builtins, ...recipeCommands]
+      .filter((command) => {
+        if (!q) return true;
+        return `${command.label} ${command.hint}`.toLowerCase().includes(q);
+      })
+      .slice(0, 12);
+  }, [
+    onNewBrowser,
+    onNewTerminal,
+    onOpenThemeGallery,
+    onRunRecipe,
+    onToggleSidebar,
+    query,
+    recipes,
+  ]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/35 px-3 pt-14 sm:pt-24" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/35 px-3 pt-14 sm:pt-24"
+      onMouseDown={onClose}
+    >
       <div
         className="w-full max-w-xl overflow-hidden border shadow-2xl"
-        style={{ background: 'var(--surface-raised)', borderColor: 'var(--border)', borderRadius: 8 }}
+        style={{
+          background: 'var(--surface-raised)',
+          borderColor: 'var(--border)',
+          borderRadius: 8,
+        }}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <input
@@ -82,11 +127,16 @@ export default function CommandPalette({
               }}
             >
               <span className="min-w-0 truncate">{command.label}</span>
-              <span className="shrink-0 truncate text-[10px]" style={{ color: 'var(--muted)' }}>{command.hint}</span>
+              <span className="shrink-0 truncate text-[10px]" style={{ color: 'var(--muted)' }}>
+                {command.hint}
+              </span>
             </button>
           ))}
           {commands.length === 0 && (
-            <div className="px-3 py-6 text-center font-mono text-xs" style={{ color: 'var(--muted)' }}>
+            <div
+              className="px-3 py-6 text-center font-mono text-xs"
+              style={{ color: 'var(--muted)' }}
+            >
               No commands
             </div>
           )}

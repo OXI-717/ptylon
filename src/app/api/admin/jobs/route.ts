@@ -5,7 +5,14 @@ import { verifyAdminRequest } from '@/lib/admin-auth';
 import { sendGatewayRequest } from '@/lib/admin-gateway-request';
 import { sendGatewayMessage } from '@/lib/admin-gateway';
 import { resolveSafePath } from '@/lib/fs-security';
-import { buildJobPrompt, engineSpec, jobResultPath, newJobId, promptRefPath, sessionRefPath } from '@/lib/jobs';
+import {
+  buildJobPrompt,
+  engineSpec,
+  jobResultPath,
+  newJobId,
+  promptRefPath,
+  sessionRefPath,
+} from '@/lib/jobs';
 
 // POST /api/admin/jobs — create a PTY session in `cwd`, start the engine interactively,
 // inject the task with the out-of-band result tail. Returns { job_id, session_id }.

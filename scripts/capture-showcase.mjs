@@ -26,12 +26,17 @@ async function openWorkspace(page) {
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await authenticate(page);
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-  await page.getByText('Skip all', { exact: true }).click().catch(() => {});
+  await page
+    .getByText('Skip all', { exact: true })
+    .click()
+    .catch(() => {});
   const newTerminal = page.locator('button[title="New Terminal (splits active pane)"]');
   await newTerminal.waitFor({ state: 'visible', timeout: 20_000 });
   await newTerminal.click();
   await page.locator('.xterm').first().waitFor({ state: 'visible', timeout: 20_000 });
-  await page.waitForFunction(() => /\bconnected\b/i.test(document.body.innerText), undefined, { timeout: 20_000 });
+  await page.waitForFunction(() => /\bconnected\b/i.test(document.body.innerText), undefined, {
+    timeout: 20_000,
+  });
 }
 
 async function prepareTerminalScreenshot(page) {
@@ -48,7 +53,10 @@ async function prepareTerminalScreenshot(page) {
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ viewport: { width: 1600, height: 980 }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({
+    viewport: { width: 1600, height: 980 },
+    deviceScaleFactor: 1,
+  });
   const page = await context.newPage();
 
   try {
@@ -61,7 +69,9 @@ async function main() {
     await page.screenshot({ path: resolve(OUT_DIR, 'ptylon-workspace.png'), fullPage: true });
 
     await page.locator('button[title="Open theme gallery"]').click();
-    await page.getByText('Theme Gallery', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 });
+    await page
+      .getByText('Theme Gallery', { exact: true })
+      .waitFor({ state: 'visible', timeout: 10_000 });
     await page.screenshot({ path: resolve(OUT_DIR, 'ptylon-theme-gallery.png'), fullPage: true });
 
     await page.setViewportSize({ width: 430, height: 920 });

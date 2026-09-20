@@ -10,11 +10,19 @@ interface DropZoneProps {
   onUploaded?: (files: { name: string; path: string; size: number }[]) => void;
 }
 
-export default function DropZone({ children, sessionId, ws, targetDir, onUploaded }: DropZoneProps) {
+export default function DropZone({
+  children,
+  sessionId,
+  ws,
+  targetDir,
+  onUploaded,
+}: DropZoneProps) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [uploadResult, setUploadResult] = useState<{ files: { name: string; path: string }[] } | null>(null);
+  const [uploadResult, setUploadResult] = useState<{
+    files: { name: string; path: string }[];
+  } | null>(null);
   const dragCounterRef = useRef(0);
 
   function hasFiles(dt: DataTransfer | null) {
@@ -23,27 +31,31 @@ export default function DropZone({ children, sessionId, ws, targetDir, onUploade
 
   function onDragEnter(e: React.DragEvent) {
     if (!hasFiles(e.dataTransfer)) return;
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     dragCounterRef.current += 1;
     setIsDragActive(true);
   }
 
   function onDragOver(e: React.DragEvent) {
     if (!hasFiles(e.dataTransfer)) return;
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
   }
 
   function onDragLeave(e: React.DragEvent) {
     if (!hasFiles(e.dataTransfer)) return;
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
     if (dragCounterRef.current === 0) setIsDragActive(false);
   }
 
   async function onDrop(e: React.DragEvent) {
     if (!hasFiles(e.dataTransfer)) return;
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     dragCounterRef.current = 0;
     setIsDragActive(false);
 
@@ -55,15 +67,26 @@ export default function DropZone({ children, sessionId, ws, targetDir, onUploade
     if (targetDir) formData.append('targetDir', targetDir);
 
     try {
-      setUploading(true); setProgress(0);
-      const res = await new Promise<{ ok: boolean; files: { name: string; path: string; size: number }[] }>((resolve, reject) => {
+      setUploading(true);
+      setProgress(0);
+      const res = await new Promise<{
+        ok: boolean;
+        files: { name: string; path: string; size: number }[];
+      }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/upload', true);
         xhr.withCredentials = true;
-        xhr.upload.onprogress = (evt) => { if (evt.lengthComputable) setProgress(Math.round((evt.loaded / evt.total) * 100)); };
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) setProgress(Math.round((evt.loaded / evt.total) * 100));
+        };
         xhr.onerror = () => reject(new Error('Upload failed'));
         xhr.onload = () => {
-          try { const json = JSON.parse(xhr.responseText); resolve(json); } catch { reject(new Error('Invalid response')); }
+          try {
+            const json = JSON.parse(xhr.responseText);
+            resolve(json);
+          } catch {
+            reject(new Error('Invalid response'));
+          }
         };
         xhr.send(formData);
       });
@@ -86,23 +109,35 @@ export default function DropZone({ children, sessionId, ws, targetDir, onUploade
     } catch (err) {
       console.error('[DropZone]', err);
     } finally {
-      setUploading(false); setProgress(0);
+      setUploading(false);
+      setProgress(0);
     }
   }
 
   return (
-    <div className="relative h-full w-full" onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
+    <div
+      className="relative h-full w-full"
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       {children}
       {(isDragActive || uploading) && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#40E0D0]/15 backdrop-blur-[1px]">
           <div className="rounded-xl border-2 border-dashed border-[#40E0D0] bg-[#0a0e14]/90 p-6 text-center shadow-2xl">
             <div className="text-3xl mb-2">📤</div>
-            <div className="text-lg font-mono text-[#40E0D0]">{uploading ? 'Uploading...' : 'Drop files here'}</div>
+            <div className="text-lg font-mono text-[#40E0D0]">
+              {uploading ? 'Uploading...' : 'Drop files here'}
+            </div>
             {targetDir && <div className="text-xs text-gray-500 mt-1 font-mono">→ {targetDir}</div>}
             {uploading && (
               <div className="mt-3 w-48">
                 <div className="h-1.5 w-full rounded bg-[#1a1e24]">
-                  <div className="h-full bg-[#40E0D0] rounded transition-all" style={{ width: `${progress}%` }} />
+                  <div
+                    className="h-full bg-[#40E0D0] rounded transition-all"
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
                 <div className="mt-1 text-xs text-gray-400">{progress}%</div>
               </div>
@@ -113,9 +148,13 @@ export default function DropZone({ children, sessionId, ws, targetDir, onUploade
       {/* Upload result toast */}
       {uploadResult && (
         <div className="absolute bottom-4 right-4 z-50 rounded-lg border border-[#40E0D0]/30 bg-[#0d1117]/95 p-3 shadow-xl max-w-xs">
-          <div className="text-xs font-mono text-[#40E0D0] mb-1">Uploaded {uploadResult.files.length} file{uploadResult.files.length > 1 ? 's' : ''}:</div>
+          <div className="text-xs font-mono text-[#40E0D0] mb-1">
+            Uploaded {uploadResult.files.length} file{uploadResult.files.length > 1 ? 's' : ''}:
+          </div>
           {uploadResult.files.map((f, i) => (
-            <div key={i} className="text-xs font-mono text-gray-400 truncate">→ {f.path}</div>
+            <div key={i} className="text-xs font-mono text-gray-400 truncate">
+              → {f.path}
+            </div>
           ))}
         </div>
       )}

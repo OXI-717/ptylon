@@ -87,15 +87,22 @@ function loadPersistedState(): Partial<PersistedState> {
     // Version check: if old format, clear and start fresh
     if (!data._version || data._version < STORAGE_VERSION) {
       // Preserve tabs if they exist (migrate forward), but clear everything else
-      const safeTabs = Array.isArray(data.tabs) ? data.tabs.filter(
-        (t: Record<string, unknown>) => t && typeof t.id === 'string' && typeof t.type === 'string'
-      ) : [];
+      const safeTabs = Array.isArray(data.tabs)
+        ? data.tabs.filter(
+            (t: Record<string, unknown>) =>
+              t && typeof t.id === 'string' && typeof t.type === 'string',
+          )
+        : [];
       return { tabs: safeTabs };
     }
     return data;
   } catch {
     // Corrupted data — clear it
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
     return {};
   }
 }
@@ -105,14 +112,20 @@ function savePersistedState(state: PersistedState) {
   const payload = { ...state, _version: STORAGE_VERSION, _savedAt: Date.now() };
   if (!payload.themeSettings) {
     try {
-      const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as Partial<PersistedState>;
+      const current = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || '{}',
+      ) as Partial<PersistedState>;
       if (current.themeSettings) payload.themeSettings = current.themeSettings;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
   // Save to localStorage (instant cache)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch { /* quota exceeded */ }
+  } catch {
+    /* quota exceeded */
+  }
   // Save to server (cross-device persistence)
   saveToServer(payload);
 }
@@ -120,23 +133,31 @@ function savePersistedState(state: PersistedState) {
 function stateWeight(state: Partial<PersistedState>) {
   const workspaces = Array.isArray(state.workspaces) ? state.workspaces : [];
   const activeTabs = Array.isArray(state.tabs) ? state.tabs : [];
-  const workspaceTabs = workspaces.reduce((sum, ws) => sum + (Array.isArray(ws.tabs) ? ws.tabs.length : 0), 0);
+  const workspaceTabs = workspaces.reduce(
+    (sum, ws) => sum + (Array.isArray(ws.tabs) ? ws.tabs.length : 0),
+    0,
+  );
   return {
     workspaces: workspaces.length,
     tabs: Math.max(activeTabs.length, workspaceTabs),
   };
 }
 
-function shouldUseServerState(serverState: Partial<PersistedState>, localState: Partial<PersistedState>) {
+function shouldUseServerState(
+  serverState: Partial<PersistedState>,
+  localState: Partial<PersistedState>,
+) {
   const localHasState = Array.isArray(localState.tabs) || Array.isArray(localState.workspaces);
   if (!localHasState) return true;
 
   const serverWeight = stateWeight(serverState);
   const localWeight = stateWeight(localState);
   if (localWeight.workspaces > serverWeight.workspaces) return false;
-  if (localWeight.workspaces === serverWeight.workspaces && localWeight.tabs > serverWeight.tabs) return false;
+  if (localWeight.workspaces === serverWeight.workspaces && localWeight.tabs > serverWeight.tabs)
+    return false;
   if (serverWeight.workspaces > localWeight.workspaces) return true;
-  if (serverWeight.workspaces === localWeight.workspaces && serverWeight.tabs > localWeight.tabs) return true;
+  if (serverWeight.workspaces === localWeight.workspaces && serverWeight.tabs > localWeight.tabs)
+    return true;
 
   const serverSavedAt = typeof serverState._savedAt === 'number' ? serverState._savedAt : 0;
   const localSavedAt = typeof localState._savedAt === 'number' ? localState._savedAt : 0;
@@ -156,7 +177,9 @@ function saveToServer(payload: Record<string, unknown>) {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    }).catch(() => { /* offline — localStorage still has it */ });
+    }).catch(() => {
+      /* offline — localStorage still has it */
+    });
   }, 2000); // 2s debounce for server (localStorage is 500ms)
 }
 
@@ -182,7 +205,9 @@ export async function loadFromServer(): Promise<Partial<PersistedState> | null> 
       // Save to localStorage as cache
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       return state as Partial<PersistedState>;
     }
     return null;
@@ -223,7 +248,9 @@ interface WorkspaceState {
 
   // Attention notifications
   notifications: WorkspaceNotification[];
-  addNotification: (notification: Omit<WorkspaceNotification, 'id' | 'createdAt' | 'read'> & { read?: boolean }) => void;
+  addNotification: (
+    notification: Omit<WorkspaceNotification, 'id' | 'createdAt' | 'read'> & { read?: boolean },
+  ) => void;
   markNotificationsReadForTab: (tabId: string) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -261,19 +288,23 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
   const initialTabs = Array.isArray(persisted.tabs) ? persisted.tabs : [];
   const initialSplitTree = persisted.splitTree || null;
   const initialActiveTabId = persisted.activeTabId || null;
-  const initialNotifications = Array.isArray(persisted.notifications) ? persisted.notifications.slice(-100) : [];
+  const initialNotifications = Array.isArray(persisted.notifications)
+    ? persisted.notifications.slice(-100)
+    : [];
 
   if (workspaces.length === 0 && initialTabs.length > 0) {
     // Migrate: create Main workspace from existing tabs
     const mainId = typeof window !== 'undefined' ? crypto.randomUUID() : 'main';
-    workspaces = [{
-      id: mainId,
-      name: 'Main',
-      color: '#40E0D0',
-      tabs: initialTabs,
-      splitTree: initialSplitTree,
-      activeTabId: initialActiveTabId,
-    }];
+    workspaces = [
+      {
+        id: mainId,
+        name: 'Main',
+        color: '#40E0D0',
+        tabs: initialTabs,
+        splitTree: initialSplitTree,
+        activeTabId: initialActiveTabId,
+      },
+    ];
     activeWorkspaceId = mainId;
   }
 
@@ -281,10 +312,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
   function triggerSave() {
     const s = get();
     // Auto-save current state to active workspace
-    const updatedWorkspaces = s.workspaces.map(ws =>
+    const updatedWorkspaces = s.workspaces.map((ws) =>
       ws.id === s.activeWorkspaceId
         ? { ...ws, tabs: s.tabs, splitTree: s.splitTree, activeTabId: s.activeTabId }
-        : ws
+        : ws,
     );
     savePersistedState({
       tabs: s.tabs,
@@ -313,9 +344,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     removeTab: (id) => {
       set((state) => {
         const newTabs = state.tabs.filter((t) => t.id !== id);
-        const newActive = state.activeTabId === id
-          ? newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null
-          : state.activeTabId;
+        const newActive =
+          state.activeTabId === id
+            ? newTabs.length > 0
+              ? newTabs[newTabs.length - 1].id
+              : null
+            : state.activeTabId;
         const tab = state.tabs.find((t) => t.id === id);
         const sessionMetadata = { ...state.sessionMetadata };
         if (tab?.sessionId) delete sessionMetadata[tab.sessionId];
@@ -361,10 +395,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       if (open && s.workspaces.length === 0 && s.tabs.length > 0) {
         const mainId = crypto.randomUUID();
         set({
-          workspaces: [{
-            id: mainId, name: 'Main', color: '#40E0D0',
-            tabs: s.tabs, splitTree: s.splitTree, activeTabId: s.activeTabId,
-          }],
+          workspaces: [
+            {
+              id: mainId,
+              name: 'Main',
+              color: '#40E0D0',
+              tabs: s.tabs,
+              splitTree: s.splitTree,
+              activeTabId: s.activeTabId,
+            },
+          ],
           activeWorkspaceId: mainId,
         });
       }
@@ -380,7 +420,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const s = get();
       if (s.workspaces.length <= 1) return; // can't delete last workspace
       set((state) => {
-        const newWorkspaces = state.workspaces.filter(ws => ws.id !== id);
+        const newWorkspaces = state.workspaces.filter((ws) => ws.id !== id);
         // If deleting active, switch to first remaining
         if (state.activeWorkspaceId === id && newWorkspaces.length > 0) {
           const target = newWorkspaces[0];
@@ -399,20 +439,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
 
     renameWorkspace: (id, name) => {
       set((state) => ({
-        workspaces: state.workspaces.map(ws => ws.id === id ? { ...ws, name } : ws),
+        workspaces: state.workspaces.map((ws) => (ws.id === id ? { ...ws, name } : ws)),
       }));
       triggerSave();
     },
 
     duplicateWorkspace: (id) => {
       const s = get();
-      const source = s.workspaces.find(ws => ws.id === id);
+      const source = s.workspaces.find((ws) => ws.id === id);
       if (!source) return;
       const newWs: Workspace = {
         id: crypto.randomUUID(),
         name: `${source.name} (copy)`,
         color: source.color,
-        tabs: source.tabs.map(t => ({ ...t, id: crypto.randomUUID(), sessionId: undefined })),
+        tabs: source.tabs.map((t) => ({ ...t, id: crypto.randomUUID(), sessionId: undefined })),
         splitTree: null, // will be re-initialized on switch
         activeTabId: null,
       };
@@ -425,14 +465,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       if (s.activeWorkspaceId === targetId) return;
 
       // Save current state to current workspace
-      const savedWorkspaces = s.workspaces.map(ws =>
+      const savedWorkspaces = s.workspaces.map((ws) =>
         ws.id === s.activeWorkspaceId
           ? { ...ws, tabs: s.tabs, splitTree: s.splitTree, activeTabId: s.activeTabId }
-          : ws
+          : ws,
       );
 
       // Load target workspace
-      const target = savedWorkspaces.find(ws => ws.id === targetId);
+      const target = savedWorkspaces.find((ws) => ws.id === targetId);
       if (!target) return;
 
       set({
@@ -479,13 +519,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     },
     markNotificationsReadForTab: (tabId) => {
       set((state) => ({
-        notifications: state.notifications.map((n) => n.tabId === tabId ? { ...n, read: true } : n),
+        notifications: state.notifications.map((n) =>
+          n.tabId === tabId ? { ...n, read: true } : n,
+        ),
       }));
       triggerSave();
     },
     markNotificationRead: (id) => {
       set((state) => ({
-        notifications: state.notifications.map((n) => n.id === id ? { ...n, read: true } : n),
+        notifications: state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
       }));
       triggerSave();
     },
@@ -519,11 +561,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const tabs = Array.isArray(serverState.tabs) ? serverState.tabs : [];
       const tree = serverState.splitTree || null;
       const tabId = serverState.activeTabId || null;
-      const notifications = Array.isArray(serverState.notifications) ? serverState.notifications.slice(-100) : [];
+      const notifications = Array.isArray(serverState.notifications)
+        ? serverState.notifications.slice(-100)
+        : [];
 
       if (ws.length === 0 && tabs.length > 0) {
         const mainId = crypto.randomUUID();
-        ws = [{ id: mainId, name: 'Main', color: '#40E0D0', tabs, splitTree: tree, activeTabId: tabId }];
+        ws = [
+          { id: mainId, name: 'Main', color: '#40E0D0', tabs, splitTree: tree, activeTabId: tabId },
+        ];
         awsId = mainId;
       }
 

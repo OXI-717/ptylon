@@ -16,16 +16,26 @@ export async function GET(req: NextRequest) {
     const reqPath = req.nextUrl.searchParams.get('path') ?? WORKSPACE_ROOT;
     const safePath = resolveSafePath(reqPath);
     const entries = await fs.readdir(safePath, { withFileTypes: true });
-    const data = await Promise.all(entries.map(async (entry) => {
-      const fullPath = path.join(safePath, entry.name);
-      try {
-        const st = await fs.stat(fullPath);
-        return { name: entry.name, path: fullPath, type: entry.isDirectory() ? 'dir' : 'file', size: st.size, mtime: st.mtime.toISOString() };
-      } catch {
-        return { name: entry.name, path: fullPath, type: 'file', size: 0, mtime: '' };
-      }
-    }));
-    data.sort((a, b) => a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1);
+    const data = await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = path.join(safePath, entry.name);
+        try {
+          const st = await fs.stat(fullPath);
+          return {
+            name: entry.name,
+            path: fullPath,
+            type: entry.isDirectory() ? 'dir' : 'file',
+            size: st.size,
+            mtime: st.mtime.toISOString(),
+          };
+        } catch {
+          return { name: entry.name, path: fullPath, type: 'file', size: 0, mtime: '' };
+        }
+      }),
+    );
+    data.sort((a, b) =>
+      a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1,
+    );
     return NextResponse.json({ path: safePath, entries: data });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'Failed' }, { status: 400 });
