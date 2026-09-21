@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminRequest } from '@/lib/admin-auth';
 import { sendGatewayMessage } from '@/lib/admin-gateway';
 import { sendGatewayRequest } from '@/lib/admin-gateway-request';
-import { execSessionRefPath } from '@/lib/exec';
+import { execSessionRefPath, sweepExecEnvFiles } from '@/lib/exec';
 import { resolveSafePath } from '@/lib/fs-security';
 
 async function readSessionId(execId: string): Promise<string | null> {
@@ -21,6 +21,9 @@ async function readSessionId(execId: string): Promise<string | null> {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const denied = verifyAdminRequest(req);
   if (denied) return denied;
+  // Clients poll this route while an exec runs — reuse the cadence to drop env.sh files of
+  // execs that never started (bounded, path-only; see sweepExecEnvFiles).
+  await sweepExecEnvFiles().catch(() => undefined);
   const { id } = await params;
   const sessionId = await readSessionId(id);
   if (!sessionId) return NextResponse.json({ alive: false, status: 'unknown' });
