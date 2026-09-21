@@ -58,6 +58,24 @@ refresh_agy() {
     [ -x "${bin}" ] && ln -sf "${bin}" "${NPM_CONFIG_PREFIX:-/usr/local}/bin/agy"
 }
 
+# devin (Devin CLI / SWE-2) is a versioned self-updating install, not an npm package: the
+# official bootstrapper unpacks into ~/.local/share/devin/cli/_versions/<v> and points
+# ~/.local/bin/devin at the current one. That whole tree lives on the seat's mounted
+# ~/.local volume, so both the binary and the credentials file survive container restarts.
+# Auth is ~/.local/share/devin/credentials.toml (file-based, no keyring in the container).
+refresh_devin() {
+    log "refreshing devin (cli.devin.ai installer)"
+    local bin="${HOME:-/home/ptylon}/.local/bin/devin"
+    if curl -fsSL --max-time 120 https://cli.devin.ai/install.sh | bash >&2; then
+        log "devin refreshed to $("${bin}" --version 2>/dev/null | head -1 || echo '?')"
+    else
+        log "WARN: devin refresh failed (network?); keeping existing binary if any"
+    fi
+    # Same reason as opencode/agy: ~/.local/bin is not on the image PATH, so without this
+    # symlink a non-interactive seat shell cannot find devin at all.
+    [ -x "${bin}" ] && ln -sf "${bin}" "${NPM_CONFIG_PREFIX:-/usr/local}/bin/devin"
+}
+
 install_engine() {
     local engine="$1" pkg
     case "${engine}" in
@@ -65,6 +83,7 @@ install_engine() {
         claude)   pkg="@anthropic-ai/claude-code@latest" ;;
         opencode) refresh_opencode; return 0 ;;
         agy)      refresh_agy; return 0 ;;
+        devin)    refresh_devin; return 0 ;;
         *) log "unknown engine '${engine}', skipping"; return 0 ;;
     esac
     log "refreshing ${engine} (${pkg}) into ${NPM_CONFIG_PREFIX:-npm default}"

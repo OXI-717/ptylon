@@ -117,4 +117,61 @@ describe('deploy/engines-entrypoint.sh', () => {
     expect(ocConfig.model).toBe('zai/glm-5.2');
     expect(ocConfig.provider.zai.options.baseURL).toBe('https://api.z.ai/api/coding/paas/v4');
   });
+
+  it('installs devin through the official installer and exposes it on PATH', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'ptylon-devin-'));
+    const fakeBin = path.join(root, 'bin');
+    const npmPrefix = path.join(root, 'npm-global');
+    await mkdir(fakeBin, { recursive: true });
+    await mkdir(path.join(npmPrefix, 'bin'), { recursive: true });
+    await writeFile(path.join(fakeBin, 'npm'), '#!/usr/bin/env bash\nexit 0\n', { mode: 0o755 });
+    // Stand in for the network installer: record the URL it was asked for and emit a
+    // script that drops a devin binary exactly where the real installer puts it.
+    const curlLog = path.join(root, 'curl.log');
+    await writeFile(
+      path.join(fakeBin, 'curl'),
+      [
+        '#!/usr/bin/env bash',
+        `printf '%s\\n' "$*" >> ${JSON.stringify(curlLog)}`,
+        'real="$HOME/.local/share/devin/cli/_versions/current/bin"',
+        'printf "%s\\n" "mkdir -p $real \\"$HOME/.local/bin\\""',
+        'printf "%s\\n" "printf \'#!/usr/bin/env bash\\\\nprintf devin-3000\\\\n\' > $real/devin"',
+        'printf "%s\\n" "chmod +x $real/devin"',
+        'printf "%s\\n" "ln -sf $real/devin \\"$HOME/.local/bin/devin\\""',
+      ].join('\n'),
+      { mode: 0o755 },
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('bash', [script, 'bash', '-c', 'printf daemon-started'], {
+        env: {
+          ...process.env,
+          ENGINES: 'devin',
+          INSTALL_ENGINES: '1',
+          HOME: root,
+          NPM_CONFIG_PREFIX: npmPrefix,
+          PATH: `${fakeBin}:${process.env.PATH ?? ''}`,
+        },
+      });
+      child.on('exit', () => resolve());
+      child.on('error', reject);
+    });
+
+    // The refresh runs in the background; wait for the marker the installer leaves.
+    const deadline = Date.now() + 10_000;
+    let linked = '';
+    while (Date.now() < deadline) {
+      try {
+        linked = await readFile(path.join(npmPrefix, 'bin', 'devin'), 'utf8');
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+
+    expect(await readFile(curlLog, 'utf8')).toContain('https://cli.devin.ai/install.sh');
+    // Exposed through the npm prefix bin, like opencode and agy: ~/.local/bin is not on
+    // the image PATH, so without this the seat cannot launch devin at all.
+    expect(linked).toContain('devin-3000');
+  }, 15_000);
 });
