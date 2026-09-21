@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { JOBS_ROOT } from './jobs';
@@ -77,7 +78,86 @@ export function buildEnvFile(env: Record<string, string>): string {
   return lines.join('\n') + (lines.length ? '\n' : '');
 }
 
-// The one line typed into the PTY bash session. Runs the argv with stdout+stderr appended to
+// env.sh holds the full provider env in plaintext (ZAI_API_KEY, HF_TOKEN, ...). It must NOT
+// outlive the startup handoff — the injected command removes it immediately after sourcing,
+// and sweepExecEnvFiles() is the bounded fallback for sessions that failed or never started
+// (OXI-717/oxi-skills#2974). The file is needed exactly once, seconds after it is written;
+// EXEC_ENV_GRACE_MS covers startup jitter, so anything older can no longer be legitimately
+// awaiting its single source and is unlinked. Contents are never read or logged — only the
+// path (which carries no secret material) is handled.
+export const EXEC_ENV_GRACE_MS = 15 * 60 * 1000;
+
+export async function writeExecEnvFile(
+  execId: string,
+  env: Record<string, string>,
+  execRoot: string = EXEC_ROOT,
+): Promise<string> {
+  const envFilePath = path.join(execRoot, execId, 'env.sh');
+  await fs.mkdir(path.dirname(envFilePath), { recursive: true });
+  await fs.writeFile(envFilePath, buildEnvFile(env), { encoding: 'utf8', mode: 0o600 });
+  return envFilePath;
+}
+
+// Removes the env.sh of one exec. Strict on unexpected errors — the caller decides whether
+// removal is best-effort (route error path) or required.
+export async function removeExecEnvFile(execId: string, execRoot: string = EXEC_ROOT): Promise<void> {
+  try {
+    await fs.unlink(path.join(execRoot, execId, 'env.sh'));
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+  }
+}
+
+export interface ExecEnvSweepResult {
+  removed: string[];
+  kept: string[];
+}
+
+// Bounded cleanup for exec env.sh files the injected command never consumed: any regular
+// env.sh under exec/<id>/ older than the grace window is stale (a live startup sources it
+// within seconds) and is unlinked. Fresh files are kept so an in-flight session still finds
+// its env. On uncertain state (unreadable stat) it fails closed by still attempting the
+// unlink of that exact path; non-regular entries (dirs, fifos) are foreign and left alone.
+export async function sweepExecEnvFiles(
+  now: number = Date.now(),
+  execRoot: string = EXEC_ROOT,
+): Promise<ExecEnvSweepResult> {
+  const result: ExecEnvSweepResult = { removed: [], kept: [] };
+  let entries;
+  try {
+    entries = await fs.readdir(execRoot, { withFileTypes: true });
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return result;
+    throw e;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const envFilePath = path.join(execRoot, entry.name, 'env.sh');
+    let st;
+    try {
+      st = await fs.stat(envFilePath);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      st = null;
+    }
+    if (st && !st.isFile()) continue;
+    if (st && now - st.mtimeMs < EXEC_ENV_GRACE_MS) {
+      result.kept.push(envFilePath);
+      continue;
+    }
+    try {
+      await fs.unlink(envFilePath);
+      result.removed.push(envFilePath);
+    } catch {
+      // Best-effort: a racing startup source or a permissions wall must not fail the sweep.
+    }
+  }
+  return result;
+}
+
+// The one line typed into the PTY bash session. Sources env.sh (provider secrets live only
+// in that file, never on this line), removes it immediately so plaintext secrets do not
+// outlive the startup handoff, runs the argv with stdout+stderr appended to
 // log_path, then writes {"rc": N, "nonce": "..."} to rc_path (tmp+mv so the polling client
 // never reads a torn write), then exits the session — session death is the liveness signal.
 export function buildExecCommand(req: ExecRequest, envFilePath: string): string {
@@ -87,7 +167,7 @@ export function buildExecCommand(req: ExecRequest, envFilePath: string): string 
   const rcTmp = shq(`${req.rc_path}.tmp`);
   const envf = shq(envFilePath);
   return (
-    `set -a; . ${envf} 2>/dev/null; set +a; ` +
+    `set -a; . ${envf} 2>/dev/null; set +a; rm -f -- ${envf}; ` +
     `cd ${shq(req.cwd)} && ` +
     `${argv} >> ${log} 2>&1; ` +
     `_rc=$?; printf '{"rc": %d, "nonce": "${req.nonce}"}' "$_rc" > ${rcTmp} && mv ${rcTmp} ${rc}; ` +
