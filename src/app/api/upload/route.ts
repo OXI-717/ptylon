@@ -24,14 +24,18 @@ export async function POST(req: NextRequest) {
     await fs.mkdir(targetDir, { recursive: true });
 
     const entries = form.getAll('files');
-    if (!entries.length) return NextResponse.json({ ok: false, error: 'No files' }, { status: 400 });
+    if (!entries.length)
+      return NextResponse.json({ ok: false, error: 'No files' }, { status: 400 });
 
     const saved: { name: string; path: string; size: number }[] = [];
 
     for (const item of entries) {
       if (!(item instanceof File)) continue;
       if (item.size > MAX_FILE_SIZE) {
-        return NextResponse.json({ ok: false, error: `File ${item.name} exceeds 50MB limit` }, { status: 413 });
+        return NextResponse.json(
+          { ok: false, error: `File ${item.name} exceeds 50MB limit` },
+          { status: 413 },
+        );
       }
       const safeName = sanitizeFileName(item.name || 'file.bin');
       const fullPath = resolveSafePath(path.join(targetDir, safeName));

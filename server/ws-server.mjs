@@ -9,7 +9,8 @@ import jwt from 'jsonwebtoken';
 const WS_PORT = parseInt(process.env.WS_PORT || '8791', 10);
 // NPM may run on another host and proxy /ws directly to this gateway.
 const WS_HOST = process.env.WS_HOST || '0.0.0.0';
-const PTY_DAEMON_URL = process.env.PTY_DAEMON_URL || `ws://127.0.0.1:${process.env.PTY_DAEMON_PORT || '8792'}`;
+const PTY_DAEMON_URL =
+  process.env.PTY_DAEMON_URL || `ws://127.0.0.1:${process.env.PTY_DAEMON_PORT || '8792'}`;
 
 if (!process.env.JWT_SECRET) {
   console.error('[WS] FATAL: JWT_SECRET env var is required');
@@ -218,12 +219,16 @@ function connectDaemon() {
         }
         send(item.ws, msg);
         if (msg.type === 'created') {
-          forwardRequest(item.ws, {
-            type: 'attach',
-            sessionId: msg.sessionId,
-            cols: msg.cols,
-            rows: msg.rows,
-          }, 'attach-after-create');
+          forwardRequest(
+            item.ws,
+            {
+              type: 'attach',
+              sessionId: msg.sessionId,
+              cols: msg.cols,
+              rows: msg.rows,
+            },
+            'attach-after-create',
+          );
         }
         if (msg.type !== 'scrollback') pending.delete(msg._cid);
         if (msg.type === 'error') pending.delete(msg._cid);
@@ -299,7 +304,9 @@ export function startWsServer() {
     console.log(`[WS] Client connected from ${req.socket.remoteAddress}`);
     browserClients.add(ws);
     ws.isAlive = true;
-    ws.on('pong', () => { ws.isAlive = true; });
+    ws.on('pong', () => {
+      ws.isAlive = true;
+    });
 
     ws.on('message', (raw) => {
       let msg;

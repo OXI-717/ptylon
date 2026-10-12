@@ -13,9 +13,25 @@ interface TabBarProps {
   activeLeafTabId?: string | null;
 }
 
-export default function TabBar({ onTabClick, onCloseTab, onNewTerminal, onNewFiles, onNewBrowser, activeLeafTabId }: TabBarProps) {
-  const { tabs, activeTabId, setActiveTab, removeTab, updateTab, addTab, ws, notifications, sessionMetadata } =
-    useWorkspaceStore();
+export default function TabBar({
+  onTabClick,
+  onCloseTab,
+  onNewTerminal,
+  onNewFiles,
+  onNewBrowser,
+  activeLeafTabId,
+}: TabBarProps) {
+  const {
+    tabs,
+    activeTabId,
+    setActiveTab,
+    removeTab,
+    updateTab,
+    addTab,
+    ws,
+    notifications,
+    sessionMetadata,
+  } = useWorkspaceStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,31 +42,39 @@ export default function TabBar({ onTabClick, onCloseTab, onNewTerminal, onNewFil
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   }, []);
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) < 50) return; // too short
-    const state = useWorkspaceStore.getState();
-    const idx = state.tabs.findIndex(t => t.id === state.activeTabId);
-    if (idx < 0) return;
-    const next = dx < 0
-      ? state.tabs[(idx + 1) % state.tabs.length]
-      : state.tabs[(idx - 1 + state.tabs.length) % state.tabs.length];
-    if (onTabClick) onTabClick(next.id); else setActiveTab(next.id);
-  }, [onTabClick, setActiveTab]);
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      if (Math.abs(dx) < 50) return; // too short
+      const state = useWorkspaceStore.getState();
+      const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
+      if (idx < 0) return;
+      const next =
+        dx < 0
+          ? state.tabs[(idx + 1) % state.tabs.length]
+          : state.tabs[(idx - 1 + state.tabs.length) % state.tabs.length];
+      if (onTabClick) onTabClick(next.id);
+      else setActiveTab(next.id);
+    },
+    [onTabClick, setActiveTab],
+  );
 
   // Touch: long press to close tab
-  const handleTabTouchStart = useCallback((tabId: string) => {
-    longPressTimer.current = setTimeout(() => {
-      if (onCloseTab) onCloseTab(tabId);
-      else {
-        const tab = tabs.find(t => t.id === tabId);
-        if (tab?.sessionId && ws?.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'kill', sessionId: tab.sessionId }));
+  const handleTabTouchStart = useCallback(
+    (tabId: string) => {
+      longPressTimer.current = setTimeout(() => {
+        if (onCloseTab) onCloseTab(tabId);
+        else {
+          const tab = tabs.find((t) => t.id === tabId);
+          if (tab?.sessionId && ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'kill', sessionId: tab.sessionId }));
+          }
+          removeTab(tabId);
         }
-        removeTab(tabId);
-      }
-    }, 600);
-  }, [tabs, ws, onCloseTab, removeTab]);
+      }, 600);
+    },
+    [tabs, ws, onCloseTab, removeTab],
+  );
   const handleTabTouchEnd = useCallback(() => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }, []);
@@ -66,13 +90,21 @@ export default function TabBar({ onTabClick, onCloseTab, onNewTerminal, onNewFil
   function handleNewTerminalClick() {
     if (onNewTerminal) return onNewTerminal();
     const id = crypto.randomUUID();
-    addTab({ id, type: 'terminal', name: `Terminal ${tabs.filter(t => t.type === 'terminal').length + 1}`, color: '#40E0D0' });
+    addTab({
+      id,
+      type: 'terminal',
+      name: `Terminal ${tabs.filter((t) => t.type === 'terminal').length + 1}`,
+      color: '#40E0D0',
+    });
   }
 
   function handleNewFilesClick() {
     if (onNewFiles) return onNewFiles();
-    const existing = tabs.find(t => t.type === 'files');
-    if (existing) { setActiveTab(existing.id); return; }
+    const existing = tabs.find((t) => t.type === 'files');
+    if (existing) {
+      setActiveTab(existing.id);
+      return;
+    }
     const id = crypto.randomUUID();
     addTab({ id, type: 'files', name: 'Files', color: '#69db7c' });
   }
@@ -80,7 +112,13 @@ export default function TabBar({ onTabClick, onCloseTab, onNewTerminal, onNewFil
   function handleNewBrowserClick() {
     if (onNewBrowser) return onNewBrowser();
     const id = crypto.randomUUID();
-    addTab({ id, type: 'browser', name: 'Browser', color: '#f59f00', url: 'http://127.0.0.1:8790' });
+    addTab({
+      id,
+      type: 'browser',
+      name: 'Browser',
+      color: '#f59f00',
+      url: 'http://127.0.0.1:8790',
+    });
   }
 
   function handleDoubleClick(tab: Tab) {
@@ -95,7 +133,9 @@ export default function TabBar({ onTabClick, onCloseTab, onNewTerminal, onNewFil
       if (ws && ws.readyState === WebSocket.OPEN) {
         const tab = tabs.find((t) => t.id === id);
         if (tab?.sessionId) {
-          ws.send(JSON.stringify({ type: 'update', sessionId: tab.sessionId, name: editValue.trim() }));
+          ws.send(
+            JSON.stringify({ type: 'update', sessionId: tab.sessionId, name: editValue.trim() }),
+          );
         }
       }
     }
@@ -139,37 +179,39 @@ export default function TabBar({ onTabClick, onCloseTab, onNewTerminal, onNewFil
               borderColor: unreadCount ? 'var(--accent)' : 'var(--border)',
               background: highlightId === tab.id ? 'var(--terminal-bg)' : 'var(--surface)',
               color: highlightId === tab.id ? 'var(--terminal-fg)' : 'var(--muted)',
-              boxShadow: unreadCount ? 'inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)' : undefined,
+              boxShadow: unreadCount
+                ? 'inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent)'
+                : undefined,
             }}
           >
-          {/* Color dot */}
-          <div
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ backgroundColor: tab.color }}
-          />
+            {/* Color dot */}
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tab.color }} />
 
-          {/* Tab name */}
-          {editingId === tab.id ? (
-            <input
-              ref={inputRef}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={() => handleEditDone(tab.id)}
-              onKeyDown={(e) => handleEditKeyDown(e, tab.id)}
-              className="bg-transparent border-b text-xs font-mono outline-none w-full min-w-0"
-              style={{ borderColor: 'var(--accent)', color: 'var(--foreground)' }}
-              autoFocus
-            />
-          ) : (
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-mono">{tab.name}</span>
-              {meta && (
-                <span className="block truncate text-[10px] leading-3 font-mono" style={{ color: 'var(--muted)' }}>
-                  {metadataPrimary(meta)}
-                </span>
-              )}
-            </span>
-          )}
+            {/* Tab name */}
+            {editingId === tab.id ? (
+              <input
+                ref={inputRef}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => handleEditDone(tab.id)}
+                onKeyDown={(e) => handleEditKeyDown(e, tab.id)}
+                className="bg-transparent border-b text-xs font-mono outline-none w-full min-w-0"
+                style={{ borderColor: 'var(--accent)', color: 'var(--foreground)' }}
+                autoFocus
+              />
+            ) : (
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-mono">{tab.name}</span>
+                {meta && (
+                  <span
+                    className="block truncate text-[10px] leading-3 font-mono"
+                    style={{ color: 'var(--muted)' }}
+                  >
+                    {metadataPrimary(meta)}
+                  </span>
+                )}
+              </span>
+            )}
 
             {unreadCount > 0 && (
               <span
@@ -190,7 +232,7 @@ export default function TabBar({ onTabClick, onCloseTab, onNewTerminal, onNewFil
               ×
             </button>
 
-          {/* Active indicator */}
+            {/* Active indicator */}
             {highlightId === tab.id && (
               <div
                 className="absolute bottom-0 left-0 right-0 h-0.5"

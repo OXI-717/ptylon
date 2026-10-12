@@ -1,16 +1,16 @@
-import { fileURLToPath } from "node:url";
+import { fileURLToPath } from 'node:url';
 
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
-const projectRoot = fileURLToPath(new URL(".", import.meta.url));
+const projectRoot = fileURLToPath(new URL('.', import.meta.url));
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: 'standalone',
   turbopack: {
     root: projectRoot,
   },
   outputFileTracingRoot: projectRoot,
-  serverExternalPackages: ["node-pty", "better-sqlite3"],
+  serverExternalPackages: ['node-pty', 'better-sqlite3'],
 };
 
 export default nextConfig;

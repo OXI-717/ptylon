@@ -16,7 +16,8 @@ export function metadataPrimary(metadata?: SessionMetadata) {
 
 export function metadataSecondary(metadata?: SessionMetadata) {
   if (!metadata) return '';
-  const command = metadata.activeCommand && metadata.activeCommand !== 'bash' ? metadata.activeCommand : '';
+  const command =
+    metadata.activeCommand && metadata.activeCommand !== 'bash' ? metadata.activeCommand : '';
   if (command && metadata.cwd) return `${command} · ${basename(metadata.cwd)}`;
   return command || metadata.cwd || '';
 }

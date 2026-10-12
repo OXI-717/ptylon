@@ -17,8 +17,16 @@ function workspaceTabIds(ws: Workspace, currentTabs: Tab[], activeId: string | n
 
 export default function Sidebar() {
   const {
-    workspaces, activeWorkspaceId, tabs, notifications, sessionMetadata,
-    switchWorkspace, addWorkspace, removeWorkspace, renameWorkspace, duplicateWorkspace,
+    workspaces,
+    activeWorkspaceId,
+    tabs,
+    notifications,
+    sessionMetadata,
+    switchWorkspace,
+    addWorkspace,
+    removeWorkspace,
+    renameWorkspace,
+    duplicateWorkspace,
   } = useWorkspaceStore();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -43,7 +51,8 @@ export default function Sidebar() {
   }
 
   function handleNewFromTemplate(name: string) {
-    const recipe = BUILTIN_RECIPES.find((candidate) => candidate.name === name) || BUILTIN_RECIPES[0];
+    const recipe =
+      BUILTIN_RECIPES.find((candidate) => candidate.name === name) || BUILTIN_RECIPES[0];
     const ws = buildWorkspaceFromRecipe(recipe);
     addWorkspace(ws);
     switchWorkspace(ws.id);
@@ -105,16 +114,26 @@ export default function Sidebar() {
             addWorkspace({ ...ws, id: crypto.randomUUID() });
           }
         }
-      } catch { /* invalid json */ }
+      } catch {
+        /* invalid json */
+      }
     };
     input.click();
   }
 
   return (
-    <div className="fixed left-0 top-9 bottom-6 z-40 flex w-64 max-w-[85vw] flex-col border-r shadow-2xl sm:static sm:h-full sm:w-52 sm:max-w-none sm:shrink-0 sm:shadow-none" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+    <div
+      className="fixed left-0 top-9 bottom-6 z-40 flex w-64 max-w-[85vw] flex-col border-r shadow-2xl sm:static sm:h-full sm:w-52 sm:max-w-none sm:shrink-0 sm:shadow-none"
+      style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+    >
       {/* Header */}
       <div className="h-9 flex items-center px-3 border-b" style={{ borderColor: 'var(--border)' }}>
-        <span className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Workspaces</span>
+        <span
+          className="text-xs font-mono uppercase tracking-wider"
+          style={{ color: 'var(--muted)' }}
+        >
+          Workspaces
+        </span>
       </div>
 
       {/* Workspace list */}
@@ -125,7 +144,7 @@ export default function Sidebar() {
             .filter((n) => !n.read && (n.workspaceId === ws.id || tabIds.has(n.tabId)))
             .sort((a, b) => b.createdAt - a.createdAt);
           const latestMeta = (ws.id === activeWorkspaceId ? tabs : ws.tabs)
-            .map((tab) => tab.sessionId ? sessionMetadata[tab.sessionId] : undefined)
+            .map((tab) => (tab.sessionId ? sessionMetadata[tab.sessionId] : undefined))
             .filter(Boolean)
             .sort((a, b) => (b?.updatedAt || 0) - (a?.updatedAt || 0))[0];
           return (
@@ -136,7 +155,10 @@ export default function Sidebar() {
               onContextMenu={(e) => handleContextMenu(e, ws.id)}
               className="group flex cursor-pointer items-start gap-2 px-3 py-1.5 transition-colors"
               style={{
-                background: activeWorkspaceId === ws.id ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'transparent',
+                background:
+                  activeWorkspaceId === ws.id
+                    ? 'color-mix(in srgb, var(--accent) 12%, transparent)'
+                    : 'transparent',
                 color: activeWorkspaceId === ws.id ? 'var(--foreground)' : 'var(--muted)',
               }}
             >
@@ -161,13 +183,19 @@ export default function Sidebar() {
                   <span className="block text-xs font-mono truncate">{ws.name}</span>
                 )}
                 {(unread[0] || latestMeta) && (
-                  <span className="block truncate text-[10px] font-mono" style={{ color: unread[0] ? 'var(--accent)' : 'var(--muted)' }}>
+                  <span
+                    className="block truncate text-[10px] font-mono"
+                    style={{ color: unread[0] ? 'var(--accent)' : 'var(--muted)' }}
+                  >
                     {unread[0]?.title || metadataPrimary(latestMeta)}
                   </span>
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-1">
-                <span className="text-[10px] font-mono" style={{ color: unread.length > 0 ? 'var(--accent)' : 'var(--muted)' }}>
+                <span
+                  className="text-[10px] font-mono"
+                  style={{ color: unread.length > 0 ? 'var(--accent)' : 'var(--muted)' }}
+                >
                   {unread.length > 0 ? unread.length : countTabs(ws, tabs, activeWorkspaceId)}
                 </span>
                 <button
@@ -204,7 +232,10 @@ export default function Sidebar() {
             <span>&#9776;</span> Templates
           </button>
           {showTemplates && (
-            <div className="absolute bottom-full left-0 w-full border rounded shadow-lg z-50" style={{ background: 'var(--surface-raised)', borderColor: 'var(--border)' }}>
+            <div
+              className="absolute bottom-full left-0 w-full border rounded shadow-lg z-50"
+              style={{ background: 'var(--surface-raised)', borderColor: 'var(--border)' }}
+            >
               {BUILTIN_RECIPES.map((recipe) => (
                 <button
                   key={recipe.id}
@@ -244,17 +275,28 @@ export default function Sidebar() {
           <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
           <div
             className="fixed z-50 border rounded shadow-lg py-1 min-w-[140px]"
-            style={{ left: contextMenu.x, top: contextMenu.y, background: 'var(--surface-raised)', borderColor: 'var(--border)' }}
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
+              background: 'var(--surface-raised)',
+              borderColor: 'var(--border)',
+            }}
           >
             <button
-              onClick={() => { handleDoubleClick(workspaces.find(w => w.id === contextMenu.id)!); setContextMenu(null); }}
+              onClick={() => {
+                handleDoubleClick(workspaces.find((w) => w.id === contextMenu.id)!);
+                setContextMenu(null);
+              }}
               className="w-full text-left px-3 py-1 text-xs font-mono"
               style={{ color: 'var(--foreground)' }}
             >
               Rename
             </button>
             <button
-              onClick={() => { duplicateWorkspace(contextMenu.id); setContextMenu(null); }}
+              onClick={() => {
+                duplicateWorkspace(contextMenu.id);
+                setContextMenu(null);
+              }}
               className="w-full text-left px-3 py-1 text-xs font-mono"
               style={{ color: 'var(--foreground)' }}
             >
@@ -262,7 +304,10 @@ export default function Sidebar() {
             </button>
             {workspaces.length > 1 && (
               <button
-                onClick={() => { removeWorkspace(contextMenu.id); setContextMenu(null); }}
+                onClick={() => {
+                  removeWorkspace(contextMenu.id);
+                  setContextMenu(null);
+                }}
                 className="w-full text-left px-3 py-1 text-xs font-mono text-red-400 hover:text-red-300 hover:bg-[#1a1e24]"
               >
                 Delete

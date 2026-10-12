@@ -64,7 +64,11 @@ function findFirstLeaf(node: SplitNode): SplitNode | null {
   return null;
 }
 
-function updateNodeInTree(root: SplitNode, id: string, updater: (n: SplitNode) => SplitNode): SplitNode {
+function updateNodeInTree(
+  root: SplitNode,
+  id: string,
+  updater: (n: SplitNode) => SplitNode,
+): SplitNode {
   if (root.id === id) return updater(root);
   if (root.type === 'split' && root.children) {
     return { ...root, children: root.children.map((c) => updateNodeInTree(c, id, updater)) };
@@ -74,7 +78,9 @@ function updateNodeInTree(root: SplitNode, id: string, updater: (n: SplitNode) =
 
 function removeLeafFromTree(root: SplitNode, leafId: string): SplitNode | null {
   if (root.type === 'leaf') return root.id === leafId ? null : root;
-  const next = (root.children ?? []).map((c) => removeLeafFromTree(c, leafId)).filter(Boolean) as SplitNode[];
+  const next = (root.children ?? [])
+    .map((c) => removeLeafFromTree(c, leafId))
+    .filter(Boolean) as SplitNode[];
   if (next.length === 0) return null;
   if (next.length === 1) return next[0];
   const sizes = new Array(next.length).fill(100 / next.length);
@@ -88,7 +94,7 @@ function countLeaves(node: SplitNode): number {
 
 function collectKnownSessionIds(
   tabs: ReturnType<typeof useWorkspaceStore.getState>['tabs'],
-  workspaces: ReturnType<typeof useWorkspaceStore.getState>['workspaces']
+  workspaces: ReturnType<typeof useWorkspaceStore.getState>['workspaces'],
 ) {
   const ids = new Set<string>();
   const addTabSession = (tab: { sessionId?: string }) => {
@@ -106,7 +112,8 @@ function getWebSocketUrl() {
   }
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+  const isLocalHost =
+    window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
   if (isLocalHost) {
     return `${protocol}//${window.location.hostname}:${DEFAULT_WS_PORT}`;
   }
@@ -124,16 +131,40 @@ function browserTabName(url: string) {
 // --- Main Component ---
 
 export default function Home() {
-  const { authenticated, setAuth, tabs, activeTabId, addTab, removeTab, updateTab, setActiveTab,
-          ws, setWs, setWsConnected, wsConnected, splitTree, setSplitTree,
-          sidebarOpen, setSidebarOpen, workspaces, activeWorkspaceId, addWorkspace, switchWorkspace,
-          notifications, addNotification, markNotificationsReadForTab,
-          sessionMetadata, setSessionMetadata } = useWorkspaceStore();
+  const {
+    authenticated,
+    setAuth,
+    tabs,
+    activeTabId,
+    addTab,
+    removeTab,
+    updateTab,
+    setActiveTab,
+    ws,
+    setWs,
+    setWsConnected,
+    wsConnected,
+    splitTree,
+    setSplitTree,
+    sidebarOpen,
+    setSidebarOpen,
+    workspaces,
+    activeWorkspaceId,
+    addWorkspace,
+    switchWorkspace,
+    notifications,
+    addNotification,
+    markNotificationsReadForTab,
+    sessionMetadata,
+    setSessionMetadata,
+  } = useWorkspaceStore();
   const [checking, setChecking] = useState(true);
   const [serverSynced, setServerSynced] = useState(false);
   const [wsReconnectKey, setWsReconnectKey] = useState(0);
   const circadian = useCircadianTheme(authenticated && serverSynced);
-  const [editorFiles, setEditorFiles] = useState<Record<string, { content: string; dirty: boolean }>>({});
+  const [editorFiles, setEditorFiles] = useState<
+    Record<string, { content: string; dirty: boolean }>
+  >({});
   const editorRestored = useRef<Set<string>>(new Set());
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -174,7 +205,7 @@ export default function Home() {
   useEffect(() => {
     if (!authenticated) return;
     fetch('/api/recipes')
-      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => setRecipes(Array.isArray(data?.recipes) ? data.recipes : []))
       .catch(() => setRecipes([]));
   }, [authenticated]);
@@ -187,14 +218,18 @@ export default function Home() {
       if (editorFiles[tab.id] || editorRestored.current.has(tab.id)) continue;
       editorRestored.current.add(tab.id);
       fetch(`/api/files/read?path=${encodeURIComponent(tab.filePath!)}`)
-        .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
         .then((data) => {
           if (data?.content !== undefined) {
-            setEditorFiles((prev) => prev[tab.id] ? prev : { ...prev, [tab.id]: { content: data.content, dirty: false } });
+            setEditorFiles((prev) =>
+              prev[tab.id] ? prev : { ...prev, [tab.id]: { content: data.content, dirty: false } },
+            );
           }
         })
         .catch(() => {
-          setEditorFiles((prev) => prev[tab.id] ? prev : { ...prev, [tab.id]: { content: '', dirty: false } });
+          setEditorFiles((prev) =>
+            prev[tab.id] ? prev : { ...prev, [tab.id]: { content: '', dirty: false } },
+          );
         });
     }
   }, [authenticated, tabs, editorFiles]);
@@ -237,7 +272,9 @@ export default function Home() {
         }
         if (msg.type === 'welcome') {
           const state = useWorkspaceStore.getState();
-          const sessions = Array.isArray(msg.sessions) ? msg.sessions as Array<{ id: string; name?: string }> : [];
+          const sessions = Array.isArray(msg.sessions)
+            ? (msg.sessions as Array<{ id: string; name?: string }>)
+            : [];
           const serverSessions = new Set<string>(sessions.map((s) => s.id));
           const sessionsTrusted = msg.sessionsTrusted !== false;
           if (state.tabs.length > 0 && sessionsTrusted) {
@@ -246,19 +283,38 @@ export default function Home() {
             const knownSessionIds = collectKnownSessionIds(nextState.tabs, nextState.workspaces);
             for (const s of sessions) {
               if (!knownSessionIds.has(s.id)) {
-                addTab({ id: crypto.randomUUID(), type: 'terminal', sessionId: s.id, name: s.name || 'Recovered Terminal', color: '#40E0D0' });
+                addTab({
+                  id: crypto.randomUUID(),
+                  type: 'terminal',
+                  sessionId: s.id,
+                  name: s.name || 'Recovered Terminal',
+                  color: '#40E0D0',
+                });
                 knownSessionIds.add(s.id);
               }
             }
           } else if (state.tabs.length === 0 && sessions.length > 0) {
             for (const s of sessions) {
-              addTab({ id: crypto.randomUUID(), type: 'terminal', sessionId: s.id, name: s.name || 'Terminal', color: '#40E0D0' });
+              addTab({
+                id: crypto.randomUUID(),
+                type: 'terminal',
+                sessionId: s.id,
+                name: s.name || 'Terminal',
+                color: '#40E0D0',
+              });
             }
           } else if (state.tabs.length === 0 && sessionsTrusted) {
-            addTab({ id: crypto.randomUUID(), type: 'terminal', name: 'Terminal 1', color: '#40E0D0' });
+            addTab({
+              id: crypto.randomUUID(),
+              type: 'terminal',
+              name: 'Terminal 1',
+              color: '#40E0D0',
+            });
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
     socket.onclose = () => {
       if (closedByCleanup) return;
@@ -287,7 +343,11 @@ export default function Home() {
   }, [authenticated, wsReconnectKey, setWs, setWsConnected, addTab, setAuth]);
 
   // --- Server stats polling ---
-  const [serverStats, setServerStats] = useState<{ sessions: number; heapMB: number; rssMB: number } | null>(null);
+  const [serverStats, setServerStats] = useState<{
+    sessions: number;
+    heapMB: number;
+    rssMB: number;
+  } | null>(null);
   useEffect(() => {
     if (!ws || !wsConnected) return;
     const handler = (event: MessageEvent) => {
@@ -303,7 +363,9 @@ export default function Home() {
         if (msg.type === 'metadata' && Array.isArray(msg.data)) {
           setSessionMetadata(msg.data);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
     ws.addEventListener('message', handler);
     // Request live telemetry without touching PTY stdin.
@@ -323,43 +385,53 @@ export default function Home() {
   }, [ws, wsConnected, setSessionMetadata]);
 
   // --- Voice transcript → active terminal ---
-  const handleVoiceTranscript = useCallback((text: string) => {
-    const state = useWorkspaceStore.getState();
-    const leaf = activeLeafId && state.splitTree ? findLeafById(state.splitTree, activeLeafId) : null;
-    const tab = leaf?.tabId
-      ? state.tabs.find(t => t.id === leaf.tabId)
-      : state.tabs.find(t => t.id === state.activeTabId);
-    if (!tab?.sessionId || !ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: 'input', sessionId: tab.sessionId, data: text }));
-  }, [ws, activeLeafId]);
+  const handleVoiceTranscript = useCallback(
+    (text: string) => {
+      const state = useWorkspaceStore.getState();
+      const leaf =
+        activeLeafId && state.splitTree ? findLeafById(state.splitTree, activeLeafId) : null;
+      const tab = leaf?.tabId
+        ? state.tabs.find((t) => t.id === leaf.tabId)
+        : state.tabs.find((t) => t.id === state.activeTabId);
+      if (!tab?.sessionId || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'input', sessionId: tab.sessionId, data: text }));
+    },
+    [ws, activeLeafId],
+  );
 
   // --- TabBar handlers (must be defined before keyboard shortcuts useEffect) ---
 
-  const handleTabClick = useCallback((tabId: string) => {
-    const tree = useWorkspaceStore.getState().splitTree;
-    if (!tree) return;
-    const leaf = findLeafByTabId(tree, tabId);
-    if (leaf) {
-      setActiveLeafId(leaf.id);
+  const handleTabClick = useCallback(
+    (tabId: string) => {
+      const tree = useWorkspaceStore.getState().splitTree;
+      if (!tree) return;
+      const leaf = findLeafByTabId(tree, tabId);
+      if (leaf) {
+        setActiveLeafId(leaf.id);
+        setActiveTab(tabId);
+        markNotificationsReadForTab(tabId);
+        return;
+      }
+      // Tab not in a leaf — show it in the active leaf
+      if (activeLeafId) {
+        setSplitTree(updateNodeInTree(tree, activeLeafId, (n) => ({ ...n, tabId })));
+      }
       setActiveTab(tabId);
       markNotificationsReadForTab(tabId);
-      return;
-    }
-    // Tab not in a leaf — show it in the active leaf
-    if (activeLeafId) {
-      setSplitTree(updateNodeInTree(tree, activeLeafId, (n) => ({ ...n, tabId })));
-    }
-    setActiveTab(tabId);
-    markNotificationsReadForTab(tabId);
-  }, [activeLeafId, setActiveTab, setSplitTree, markNotificationsReadForTab]);
+    },
+    [activeLeafId, setActiveTab, setSplitTree, markNotificationsReadForTab],
+  );
 
-  const handleRunRecipe = useCallback((recipe: WorkspaceRecipe) => {
-    const nextWorkspace = buildWorkspaceFromRecipe(recipe);
-    addWorkspace(nextWorkspace);
-    switchWorkspace(nextWorkspace.id);
-    const first = nextWorkspace.splitTree ? findFirstLeaf(nextWorkspace.splitTree) : null;
-    setActiveLeafId(first?.id || null);
-  }, [addWorkspace, switchWorkspace]);
+  const handleRunRecipe = useCallback(
+    (recipe: WorkspaceRecipe) => {
+      const nextWorkspace = buildWorkspaceFromRecipe(recipe);
+      addWorkspace(nextWorkspace);
+      switchWorkspace(nextWorkspace.id);
+      const first = nextWorkspace.splitTree ? findFirstLeaf(nextWorkspace.splitTree) : null;
+      setActiveLeafId(first?.id || null);
+    },
+    [addWorkspace, switchWorkspace],
+  );
 
   // --- Global keyboard shortcuts ---
   useEffect(() => {
@@ -379,7 +451,7 @@ export default function Home() {
       if (e.ctrlKey && e.key === 'PageDown') {
         e.preventDefault();
         const state = useWorkspaceStore.getState();
-        const idx = state.tabs.findIndex(t => t.id === state.activeTabId);
+        const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
         if (idx >= 0 && state.tabs.length > 1) {
           const next = state.tabs[(idx + 1) % state.tabs.length];
           handleTabClick(next.id);
@@ -390,7 +462,7 @@ export default function Home() {
       if (e.ctrlKey && e.key === 'PageUp') {
         e.preventDefault();
         const state = useWorkspaceStore.getState();
-        const idx = state.tabs.findIndex(t => t.id === state.activeTabId);
+        const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
         if (idx >= 0 && state.tabs.length > 1) {
           const prev = state.tabs[(idx - 1 + state.tabs.length) % state.tabs.length];
           handleTabClick(prev.id);
@@ -427,76 +499,89 @@ export default function Home() {
 
   const handleSessionCreated = useCallback(
     (tabId: string, sessionId: string) => updateTab(tabId, { sessionId }),
-    [updateTab]
+    [updateTab],
   );
 
-  const handleSaveFile = useCallback(async (tabId: string) => {
-    const tab = useWorkspaceStore.getState().tabs.find((t) => t.id === tabId);
-    const file = editorFiles[tabId];
-    if (!tab?.filePath || !file) return;
-    await fetch('/api/files/write', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: tab.filePath, content: file.content }),
-    });
-    setEditorFiles((prev) => ({ ...prev, [tabId]: { ...prev[tabId], dirty: false } }));
-  }, [editorFiles]);
+  const handleSaveFile = useCallback(
+    async (tabId: string) => {
+      const tab = useWorkspaceStore.getState().tabs.find((t) => t.id === tabId);
+      const file = editorFiles[tabId];
+      if (!tab?.filePath || !file) return;
+      await fetch('/api/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: tab.filePath, content: file.content }),
+      });
+      setEditorFiles((prev) => ({ ...prev, [tabId]: { ...prev[tabId], dirty: false } }));
+    },
+    [editorFiles],
+  );
 
   // Open file: show in active leaf
-  const handleOpenFile = useCallback(async (filePath: string) => {
-    const state = useWorkspaceStore.getState();
-    const existing = state.tabs.find((t) => t.filePath === filePath);
-    if (existing) {
-      const leaf = findLeafByTabId(state.splitTree, existing.id);
-      if (leaf) {
-        setActiveLeafId(leaf.id);
-      } else if (state.splitTree && activeLeafId) {
-        setSplitTree(updateNodeInTree(state.splitTree, activeLeafId, (n) => ({ ...n, tabId: existing.id })));
+  const handleOpenFile = useCallback(
+    async (filePath: string) => {
+      const state = useWorkspaceStore.getState();
+      const existing = state.tabs.find((t) => t.filePath === filePath);
+      if (existing) {
+        const leaf = findLeafByTabId(state.splitTree, existing.id);
+        if (leaf) {
+          setActiveLeafId(leaf.id);
+        } else if (state.splitTree && activeLeafId) {
+          setSplitTree(
+            updateNodeInTree(state.splitTree, activeLeafId, (n) => ({ ...n, tabId: existing.id })),
+          );
+        }
+        setActiveTab(existing.id);
+        return;
       }
-      setActiveTab(existing.id);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/files/read?path=${encodeURIComponent(filePath)}`);
-      const data = await res.json();
-      const tabId = crypto.randomUUID();
-      const name = filePath.split('/').pop() || 'file';
-      setEditorFiles((prev) => ({ ...prev, [tabId]: { content: data.content, dirty: false } }));
-      addTab({ id: tabId, type: 'editor', name, color: '#74c0fc', filePath });
-      const tree = useWorkspaceStore.getState().splitTree;
-      if (tree && activeLeafId) {
-        setSplitTree(updateNodeInTree(tree, activeLeafId, (n) => ({ ...n, tabId })));
+      try {
+        const res = await fetch(`/api/files/read?path=${encodeURIComponent(filePath)}`);
+        const data = await res.json();
+        const tabId = crypto.randomUUID();
+        const name = filePath.split('/').pop() || 'file';
+        setEditorFiles((prev) => ({ ...prev, [tabId]: { content: data.content, dirty: false } }));
+        addTab({ id: tabId, type: 'editor', name, color: '#74c0fc', filePath });
+        const tree = useWorkspaceStore.getState().splitTree;
+        if (tree && activeLeafId) {
+          setSplitTree(updateNodeInTree(tree, activeLeafId, (n) => ({ ...n, tabId })));
+        }
+      } catch {
+        /* ignore */
       }
-    } catch { /* ignore */ }
-  }, [addTab, activeLeafId, setActiveTab, setSplitTree]);
+    },
+    [addTab, activeLeafId, setActiveTab, setSplitTree],
+  );
 
   // --- TabBar handlers ---
 
-  const handleCloseTab = useCallback((tabId: string) => {
-    const state = useWorkspaceStore.getState();
-    const tab = state.tabs.find((t) => t.id === tabId);
-    if (tab?.sessionId && ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'kill', sessionId: tab.sessionId }));
-    }
-    const tree = state.splitTree;
-    if (tree) {
-      const leaf = findLeafByTabId(tree, tabId);
-      if (leaf) {
-        const newTree = removeLeafFromTree(tree, leaf.id);
-        if (newTree) {
-          setSplitTree(newTree);
-          if (activeLeafId === leaf.id) {
-            const first = findFirstLeaf(newTree);
-            if (first) setActiveLeafId(first.id);
+  const handleCloseTab = useCallback(
+    (tabId: string) => {
+      const state = useWorkspaceStore.getState();
+      const tab = state.tabs.find((t) => t.id === tabId);
+      if (tab?.sessionId && ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'kill', sessionId: tab.sessionId }));
+      }
+      const tree = state.splitTree;
+      if (tree) {
+        const leaf = findLeafByTabId(tree, tabId);
+        if (leaf) {
+          const newTree = removeLeafFromTree(tree, leaf.id);
+          if (newTree) {
+            setSplitTree(newTree);
+            if (activeLeafId === leaf.id) {
+              const first = findFirstLeaf(newTree);
+              if (first) setActiveLeafId(first.id);
+            }
+          } else {
+            setSplitTree(null);
+            setActiveLeafId(null);
           }
-        } else {
-          setSplitTree(null);
-          setActiveLeafId(null);
         }
       }
-    }
-    removeTab(tabId);
-  }, [ws, removeTab, activeLeafId, setSplitTree]);
+      removeTab(tabId);
+    },
+    [ws, removeTab, activeLeafId, setSplitTree],
+  );
 
   const handleNewTerminal = useCallback(() => {
     const tabId = crypto.randomUUID();
@@ -512,19 +597,24 @@ export default function Home() {
     const targetId = activeLeafId || findFirstLeaf(tree)?.id;
     if (!targetId) return;
     const newLeafId = crypto.randomUUID();
-    setSplitTree(updateNodeInTree(tree, targetId, (node) => ({
-      id: crypto.randomUUID(),
-      type: 'split' as const,
-      direction: 'horizontal' as const,
-      children: [{ ...node }, { id: newLeafId, type: 'leaf' as const, tabId }],
-      sizes: [50, 50],
-    })));
+    setSplitTree(
+      updateNodeInTree(tree, targetId, (node) => ({
+        id: crypto.randomUUID(),
+        type: 'split' as const,
+        direction: 'horizontal' as const,
+        children: [{ ...node }, { id: newLeafId, type: 'leaf' as const, tabId }],
+        sizes: [50, 50],
+      })),
+    );
     setActiveLeafId(newLeafId);
   }, [tabs, addTab, activeLeafId, setSplitTree]);
 
   const handleNewFiles = useCallback(() => {
     const existing = tabs.find((t) => t.type === 'files');
-    if (existing) { handleTabClick(existing.id); return; }
+    if (existing) {
+      handleTabClick(existing.id);
+      return;
+    }
     const tabId = crypto.randomUUID();
     addTab({ id: tabId, type: 'files', name: 'Files', color: '#69db7c' });
     const tree = useWorkspaceStore.getState().splitTree;
@@ -533,144 +623,187 @@ export default function Home() {
     }
   }, [tabs, addTab, activeLeafId, setSplitTree, handleTabClick]);
 
-  const handleNewBrowser = useCallback((url = 'http://127.0.0.1:8790') => {
-    const tabId = crypto.randomUUID();
-    addTab({ id: tabId, type: 'browser', name: 'Browser', color: '#f59f00', url });
-    const tree = useWorkspaceStore.getState().splitTree;
-    if (!tree) {
-      const leafId = crypto.randomUUID();
-      setSplitTree({ id: leafId, type: 'leaf', tabId });
-      setActiveLeafId(leafId);
-      return;
-    }
-    const targetId = activeLeafId || findFirstLeaf(tree)?.id;
-    if (!targetId) return;
-    const newLeafId = crypto.randomUUID();
-    setSplitTree(updateNodeInTree(tree, targetId, (node) => ({
-      id: crypto.randomUUID(),
-      type: 'split' as const,
-      direction: 'horizontal' as const,
-      children: [{ ...node }, { id: newLeafId, type: 'leaf' as const, tabId }],
-      sizes: [55, 45],
-    })));
-    setActiveLeafId(newLeafId);
-  }, [addTab, activeLeafId, setSplitTree]);
+  const handleNewBrowser = useCallback(
+    (url = 'http://127.0.0.1:8790') => {
+      const tabId = crypto.randomUUID();
+      addTab({ id: tabId, type: 'browser', name: 'Browser', color: '#f59f00', url });
+      const tree = useWorkspaceStore.getState().splitTree;
+      if (!tree) {
+        const leafId = crypto.randomUUID();
+        setSplitTree({ id: leafId, type: 'leaf', tabId });
+        setActiveLeafId(leafId);
+        return;
+      }
+      const targetId = activeLeafId || findFirstLeaf(tree)?.id;
+      if (!targetId) return;
+      const newLeafId = crypto.randomUUID();
+      setSplitTree(
+        updateNodeInTree(tree, targetId, (node) => ({
+          id: crypto.randomUUID(),
+          type: 'split' as const,
+          direction: 'horizontal' as const,
+          children: [{ ...node }, { id: newLeafId, type: 'leaf' as const, tabId }],
+          sizes: [55, 45],
+        })),
+      );
+      setActiveLeafId(newLeafId);
+    },
+    [addTab, activeLeafId, setSplitTree],
+  );
 
   // --- SplitContainer handlers ---
 
-  const handleSplitNewLeaf = useCallback((leafId: string) => {
-    const tabId = crypto.randomUUID();
-    const name = `Terminal ${tabs.filter((t) => t.type === 'terminal').length + 1}`;
-    addTab({ id: tabId, type: 'terminal', name, color: '#40E0D0' });
-    const tree = useWorkspaceStore.getState().splitTree;
-    if (tree) {
-      setSplitTree(updateNodeInTree(tree, leafId, (n) => ({ ...n, tabId })));
-    }
-  }, [tabs, addTab, setSplitTree]);
-
-  const handleSplitCloseLeaf = useCallback((leafId: string, nextTree: SplitNode | null) => {
-    const tree = useWorkspaceStore.getState().splitTree;
-    if (!tree) return;
-    const leaf = findLeafById(tree, leafId);
-    if (leaf?.tabId) {
-      const tab = useWorkspaceStore.getState().tabs.find((t) => t.id === leaf.tabId);
-      if (tab?.sessionId && ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'kill', sessionId: tab.sessionId }));
+  const handleSplitNewLeaf = useCallback(
+    (leafId: string) => {
+      const tabId = crypto.randomUUID();
+      const name = `Terminal ${tabs.filter((t) => t.type === 'terminal').length + 1}`;
+      addTab({ id: tabId, type: 'terminal', name, color: '#40E0D0' });
+      const tree = useWorkspaceStore.getState().splitTree;
+      if (tree) {
+        setSplitTree(updateNodeInTree(tree, leafId, (n) => ({ ...n, tabId })));
       }
-      removeTab(leaf.tabId);
-    }
-    if (!nextTree) {
-      setSplitTree(null);
-      setActiveLeafId(null);
-    }
-  }, [ws, removeTab, setSplitTree]);
+    },
+    [tabs, addTab, setSplitTree],
+  );
+
+  const handleSplitCloseLeaf = useCallback(
+    (leafId: string, nextTree: SplitNode | null) => {
+      const tree = useWorkspaceStore.getState().splitTree;
+      if (!tree) return;
+      const leaf = findLeafById(tree, leafId);
+      if (leaf?.tabId) {
+        const tab = useWorkspaceStore.getState().tabs.find((t) => t.id === leaf.tabId);
+        if (tab?.sessionId && ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'kill', sessionId: tab.sessionId }));
+        }
+        removeTab(leaf.tabId);
+      }
+      if (!nextTree) {
+        setSplitTree(null);
+        setActiveLeafId(null);
+      }
+    },
+    [ws, removeTab, setSplitTree],
+  );
 
   // --- Render leaf content ---
 
-  const renderLeaf = useCallback((node: SplitNode, isActive: boolean) => {
-    const tab = tabs.find((t) => t.id === node.tabId);
-    if (!tab) {
-      return (
-        <div className="h-full flex items-center justify-center" style={{ background: 'var(--terminal-bg)' }}>
-          <p className="font-mono text-sm" style={{ color: 'var(--muted)' }}>Empty pane</p>
-        </div>
-      );
-    }
-    if (tab.type === 'terminal') {
-      return (
-        <DropZone sessionId={tab.sessionId || null} ws={ws}>
-          <TerminalPanel
-            key={tab.id}
-            sessionId={tab.sessionId || null}
-            ws={ws}
-            isActive={isActive}
-            onSessionCreated={(sid) => handleSessionCreated(tab.id, sid)}
-            onNotification={(notification) => addNotification({
-              ...notification,
-              tabId: tab.id,
-              sessionId: tab.sessionId || undefined,
-              workspaceId: activeWorkspaceId,
-            })}
-            cwd={tab.cwd}
-            initCommand={tab.initCommand}
-          />
-        </DropZone>
-      );
-    }
-    if (tab.type === 'editor') {
-      return (
-        <ErrorBoundary fallbackLabel="Editor">
-          {editorFiles[tab.id] ? (
-            <MonacoEditorPanel
+  const renderLeaf = useCallback(
+    (node: SplitNode, isActive: boolean) => {
+      const tab = tabs.find((t) => t.id === node.tabId);
+      if (!tab) {
+        return (
+          <div
+            className="h-full flex items-center justify-center"
+            style={{ background: 'var(--terminal-bg)' }}
+          >
+            <p className="font-mono text-sm" style={{ color: 'var(--muted)' }}>
+              Empty pane
+            </p>
+          </div>
+        );
+      }
+      if (tab.type === 'terminal') {
+        return (
+          <DropZone sessionId={tab.sessionId || null} ws={ws}>
+            <TerminalPanel
               key={tab.id}
-              filePath={tab.filePath || ''}
-              value={editorFiles[tab.id].content}
-              onChange={(v) => setEditorFiles((prev) => ({ ...prev, [tab.id]: { content: v, dirty: true } }))}
-              onSave={() => handleSaveFile(tab.id)}
-              onOpenFile={handleOpenFile}
+              sessionId={tab.sessionId || null}
+              ws={ws}
+              isActive={isActive}
+              onSessionCreated={(sid) => handleSessionCreated(tab.id, sid)}
+              onNotification={(notification) =>
+                addNotification({
+                  ...notification,
+                  tabId: tab.id,
+                  sessionId: tab.sessionId || undefined,
+                  workspaceId: activeWorkspaceId,
+                })
+              }
+              cwd={tab.cwd}
+              initCommand={tab.initCommand}
             />
-          ) : (
-            <div className="h-full flex items-center justify-center" style={{ background: 'var(--terminal-bg)' }}>
-              <div className="font-mono text-sm animate-pulse" style={{ color: 'var(--accent)' }}>
-                Loading {tab.filePath?.split('/').pop() || 'file'}...
+          </DropZone>
+        );
+      }
+      if (tab.type === 'editor') {
+        return (
+          <ErrorBoundary fallbackLabel="Editor">
+            {editorFiles[tab.id] ? (
+              <MonacoEditorPanel
+                key={tab.id}
+                filePath={tab.filePath || ''}
+                value={editorFiles[tab.id].content}
+                onChange={(v) =>
+                  setEditorFiles((prev) => ({ ...prev, [tab.id]: { content: v, dirty: true } }))
+                }
+                onSave={() => handleSaveFile(tab.id)}
+                onOpenFile={handleOpenFile}
+              />
+            ) : (
+              <div
+                className="h-full flex items-center justify-center"
+                style={{ background: 'var(--terminal-bg)' }}
+              >
+                <div className="font-mono text-sm animate-pulse" style={{ color: 'var(--accent)' }}>
+                  Loading {tab.filePath?.split('/').pop() || 'file'}...
+                </div>
               </div>
-            </div>
-          )}
-        </ErrorBoundary>
-      );
-    }
-    if (tab.type === 'files') {
-      return (
-        <ErrorBoundary fallbackLabel="File Manager">
-          <FileManager onOpenFile={handleOpenFile} />
-        </ErrorBoundary>
-      );
-    }
-    if (tab.type === 'browser') {
-      return (
-        <ErrorBoundary fallbackLabel="Browser">
-          <BrowserPanel
-            key={tab.id}
-            url={tab.url}
-            browserSessionId={tab.browserSessionId}
-            isActive={isActive}
-            onBrowserChange={(changes) => updateTab(tab.id, {
-              ...changes,
-              name: changes.url ? browserTabName(changes.url) : tab.name,
-            })}
-          />
-        </ErrorBoundary>
-      );
-    }
-    return null;
-  }, [tabs, ws, editorFiles, handleSessionCreated, handleSaveFile, handleOpenFile, addNotification, activeWorkspaceId, updateTab]);
+            )}
+          </ErrorBoundary>
+        );
+      }
+      if (tab.type === 'files') {
+        return (
+          <ErrorBoundary fallbackLabel="File Manager">
+            <FileManager onOpenFile={handleOpenFile} />
+          </ErrorBoundary>
+        );
+      }
+      if (tab.type === 'browser') {
+        return (
+          <ErrorBoundary fallbackLabel="Browser">
+            <BrowserPanel
+              key={tab.id}
+              url={tab.url}
+              browserSessionId={tab.browserSessionId}
+              isActive={isActive}
+              onBrowserChange={(changes) =>
+                updateTab(tab.id, {
+                  ...changes,
+                  name: changes.url ? browserTabName(changes.url) : tab.name,
+                })
+              }
+            />
+          </ErrorBoundary>
+        );
+      }
+      return null;
+    },
+    [
+      tabs,
+      ws,
+      editorFiles,
+      handleSessionCreated,
+      handleSaveFile,
+      handleOpenFile,
+      addNotification,
+      activeWorkspaceId,
+      updateTab,
+    ],
+  );
 
   // --- Render ---
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
-        <div className="font-mono animate-pulse" style={{ color: 'var(--accent)' }}>Loading...</div>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--background)' }}
+      >
+        <div className="font-mono animate-pulse" style={{ color: 'var(--accent)' }}>
+          Loading...
+        </div>
       </div>
     );
   }
@@ -682,7 +815,8 @@ export default function Home() {
     ? tabs.find((t) => t.id === activeLeaf.tabId)
     : tabs.find((t) => t.id === activeTabId);
   const leafCount = splitTree ? countLeaves(splitTree) : 0;
-  const latestUnread = notifications.filter((n) => !n.read).sort((a, b) => b.createdAt - a.createdAt)[0] || null;
+  const latestUnread =
+    notifications.filter((n) => !n.read).sort((a, b) => b.createdAt - a.createdAt)[0] || null;
   const activeMetadata = activeTab?.sessionId ? sessionMetadata[activeTab.sessionId] : undefined;
 
   function handleJumpLatestUnread() {
@@ -702,7 +836,10 @@ export default function Home() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+    <div
+      className="h-screen flex flex-col overflow-hidden"
+      style={{ background: 'var(--background)', color: 'var(--foreground)' }}
+    >
       <Onboarding />
       <CommandPalette
         open={paletteOpen}
@@ -732,47 +869,65 @@ export default function Home() {
 
       {/* Main area: sidebar + content */}
       <div className="relative flex-1 flex overflow-hidden">
-      {/* Sidebar */}
-      {sidebarOpen && (
-        <button
-          type="button"
-          aria-label="Hide workspaces"
-          className="fixed left-0 right-0 top-9 bottom-6 z-30 bg-black/35 sm:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      {sidebarOpen && <Sidebar />}
-
-      {/* Content — SplitContainer */}
-      <div className="flex-1 overflow-hidden">
-        {splitTree ? (
-          <SplitContainer
-            tree={splitTree}
-            activeLeafId={activeLeafId || ''}
-            onTreeChange={setSplitTree}
-            onActiveChange={setActiveLeafId}
-            onNewLeaf={handleSplitNewLeaf}
-            onCloseLeaf={handleSplitCloseLeaf}
-            renderLeaf={renderLeaf}
+        {/* Sidebar */}
+        {sidebarOpen && (
+          <button
+            type="button"
+            aria-label="Hide workspaces"
+            className="fixed left-0 right-0 top-9 bottom-6 z-30 bg-black/35 sm:hidden"
+            onClick={() => setSidebarOpen(false)}
           />
-        ) : tabs.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-4xl mb-4" style={{ color: 'var(--accent)' }}>⬡</div>
-              <p className="font-mono" style={{ color: 'var(--muted)' }}>No tabs open</p>
-              <p className="font-mono text-sm mt-1" style={{ color: 'var(--muted)' }}>Click + to create a terminal</p>
-            </div>
-          </div>
-        ) : (
-          <div className="h-full flex items-center justify-center" style={{ background: 'var(--terminal-bg)' }}>
-            <div className="font-mono animate-pulse" style={{ color: 'var(--accent)' }}>Initializing...</div>
-          </div>
         )}
-      </div>
+        {sidebarOpen && <Sidebar />}
+
+        {/* Content — SplitContainer */}
+        <div className="flex-1 overflow-hidden">
+          {splitTree ? (
+            <SplitContainer
+              tree={splitTree}
+              activeLeafId={activeLeafId || ''}
+              onTreeChange={setSplitTree}
+              onActiveChange={setActiveLeafId}
+              onNewLeaf={handleSplitNewLeaf}
+              onCloseLeaf={handleSplitCloseLeaf}
+              renderLeaf={renderLeaf}
+            />
+          ) : tabs.length === 0 ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-4xl mb-4" style={{ color: 'var(--accent)' }}>
+                  ⬡
+                </div>
+                <p className="font-mono" style={{ color: 'var(--muted)' }}>
+                  No tabs open
+                </p>
+                <p className="font-mono text-sm mt-1" style={{ color: 'var(--muted)' }}>
+                  Click + to create a terminal
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="h-full flex items-center justify-center"
+              style={{ background: 'var(--terminal-bg)' }}
+            >
+              <div className="font-mono animate-pulse" style={{ color: 'var(--accent)' }}>
+                Initializing...
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Status bar */}
-      <div className="h-6 border-t flex items-center overflow-x-auto px-2 gap-3 whitespace-nowrap text-xs font-mono sm:px-3 sm:gap-4" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}>
+      <div
+        className="h-6 border-t flex items-center overflow-x-auto px-2 gap-3 whitespace-nowrap text-xs font-mono sm:px-3 sm:gap-4"
+        style={{
+          background: 'var(--surface)',
+          borderColor: 'var(--border)',
+          color: 'var(--muted)',
+        }}
+      >
         {/* Sidebar toggle */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -783,7 +938,9 @@ export default function Home() {
           &#9776;
         </button>
         <span className="flex items-center gap-1">
-          <div className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+          <div
+            className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`}
+          />
           {wsConnected ? 'Connected' : 'Disconnected'}
         </span>
         <button
@@ -794,7 +951,9 @@ export default function Home() {
         >
           Ctrl+K
         </button>
-        <span>{tabs.length} tab{tabs.length !== 1 ? 's' : ''}</span>
+        <span>
+          {tabs.length} tab{tabs.length !== 1 ? 's' : ''}
+        </span>
         {leafCount > 1 && <span style={{ color: 'var(--accent)' }}>{leafCount} panes</span>}
         {latestUnread && (
           <button
@@ -807,9 +966,7 @@ export default function Home() {
           </button>
         )}
         {workspaces.length > 1 && (
-          <span>
-            {workspaces.find(w => w.id === activeWorkspaceId)?.name || 'Main'}
-          </span>
+          <span>{workspaces.find((w) => w.id === activeWorkspaceId)?.name || 'Main'}</span>
         )}
         {activeTab?.type === 'editor' && editorFiles[activeTab.id]?.dirty && (
           <span style={{ color: 'var(--accent)' }}>modified</span>
@@ -823,7 +980,9 @@ export default function Home() {
           </span>
         )}
         {serverStats && (
-          <span title={`PTY: ${serverStats.sessions} sessions, Heap: ${serverStats.heapMB}MB, RSS: ${serverStats.rssMB}MB`}>
+          <span
+            title={`PTY: ${serverStats.sessions} sessions, Heap: ${serverStats.heapMB}MB, RSS: ${serverStats.rssMB}MB`}
+          >
             PTY:{serverStats.sessions} RAM:{serverStats.rssMB}MB
           </span>
         )}
@@ -852,7 +1011,12 @@ export default function Home() {
         </button>
         <button
           onClick={() => circadian.resetToAuto()}
-          style={{ color: circadian.mode === 'auto' && circadian.paletteId === 'circadian' ? 'var(--accent)' : undefined }}
+          style={{
+            color:
+              circadian.mode === 'auto' && circadian.paletteId === 'circadian'
+                ? 'var(--accent)'
+                : undefined,
+          }}
           title="Auto circadian theme"
         >
           auto

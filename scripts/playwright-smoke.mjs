@@ -19,10 +19,15 @@ async function main() {
   const password = await envValue('AUTH_PASSWORD');
   const username = process.env.WC_BASIC_USER;
   const basicPassword = process.env.WC_BASIC_PASS;
-  assert(Boolean(username) === Boolean(basicPassword), 'set both WC_BASIC_USER and WC_BASIC_PASS for proxy basic auth');
+  assert(
+    Boolean(username) === Boolean(basicPassword),
+    'set both WC_BASIC_USER and WC_BASIC_PASS for proxy basic auth',
+  );
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext(username ? { httpCredentials: { username, password: basicPassword } } : {});
+  const context = await browser.newContext(
+    username ? { httpCredentials: { username, password: basicPassword } } : {},
+  );
   const page = await context.newPage();
   const sockets = [];
   page.on('websocket', (ws) => sockets.push(ws.url()));
@@ -41,9 +46,13 @@ async function main() {
     assert(authenticated, 'application authentication failed');
 
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => /\bconnected\b/i.test(document.body.innerText), undefined, { timeout: 20_000 });
+    await page.waitForFunction(() => /\bconnected\b/i.test(document.body.innerText), undefined, {
+      timeout: 20_000,
+    });
     assert(sockets.length > 0, 'browser did not attach a WebSocket');
-    console.log(JSON.stringify({ baseUrl: BASE_URL, appLogin: true, connected: true, websocketAttach: true }));
+    console.log(
+      JSON.stringify({ baseUrl: BASE_URL, appLogin: true, connected: true, websocketAttach: true }),
+    );
   } finally {
     await browser.close();
   }

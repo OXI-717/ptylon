@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type WheelEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type WheelEvent,
+} from 'react';
 
 interface BrowserPanelProps {
   url?: string;
@@ -29,7 +37,8 @@ function normalizeUrl(input: string) {
   const trimmed = input.trim();
   if (!trimmed) return 'about:blank';
   if (/^(https?:|about:|data:)/i.test(trimmed)) return trimmed;
-  if (/^localhost(:|\/|$)/i.test(trimmed) || /^127\.0\.0\.1(:|\/|$)/.test(trimmed)) return `http://${trimmed}`;
+  if (/^localhost(:|\/|$)/i.test(trimmed) || /^127\.0\.0\.1(:|\/|$)/.test(trimmed))
+    return `http://${trimmed}`;
   return `https://${trimmed}`;
 }
 
@@ -38,7 +47,12 @@ function externalUrl(url: string) {
   return url;
 }
 
-export default function BrowserPanel({ url, browserSessionId, isActive, onBrowserChange }: BrowserPanelProps) {
+export default function BrowserPanel({
+  url,
+  browserSessionId,
+  isActive,
+  onBrowserChange,
+}: BrowserPanelProps) {
   const [draftUrl, setDraftUrl] = useState(url || 'http://127.0.0.1:8790');
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [frame, setFrame] = useState<BrowserFrame | null>(null);
@@ -79,36 +93,42 @@ export default function BrowserPanel({ url, browserSessionId, isActive, onBrowse
     return () => observer.disconnect();
   }, []);
 
-  const applyFrame = useCallback((nextFrame: BrowserFrame) => {
-    setFrame(nextFrame);
-    setSessionId(nextFrame.sessionId);
-    if (document.activeElement !== inputRef.current) setDraftUrl(nextFrame.url);
-    const reportKey = `${nextFrame.sessionId}:${nextFrame.url}`;
-    if (reportedRef.current !== reportKey) {
-      reportedRef.current = reportKey;
-      onBrowserChange?.({ url: nextFrame.url, browserSessionId: nextFrame.sessionId });
-    }
-  }, [onBrowserChange]);
+  const applyFrame = useCallback(
+    (nextFrame: BrowserFrame) => {
+      setFrame(nextFrame);
+      setSessionId(nextFrame.sessionId);
+      if (document.activeElement !== inputRef.current) setDraftUrl(nextFrame.url);
+      const reportKey = `${nextFrame.sessionId}:${nextFrame.url}`;
+      if (reportedRef.current !== reportKey) {
+        reportedRef.current = reportKey;
+        onBrowserChange?.({ url: nextFrame.url, browserSessionId: nextFrame.sessionId });
+      }
+    },
+    [onBrowserChange],
+  );
 
-  const requestBrowser = useCallback(async (body: Record<string, unknown>) => {
-    const quiet = body.action === 'frame';
-    if (!quiet) setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('/api/browser', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ width: viewport.width, height: viewport.height, ...body }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Browser request failed');
-      if (data.frame) applyFrame(data.frame);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Browser request failed');
-    } finally {
-      if (!quiet) setLoading(false);
-    }
-  }, [applyFrame, viewport.height, viewport.width]);
+  const requestBrowser = useCallback(
+    async (body: Record<string, unknown>) => {
+      const quiet = body.action === 'frame';
+      if (!quiet) setLoading(true);
+      setError('');
+      try {
+        const res = await fetch('/api/browser', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ width: viewport.width, height: viewport.height, ...body }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'Browser request failed');
+        if (data.frame) applyFrame(data.frame);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Browser request failed');
+      } finally {
+        if (!quiet) setLoading(false);
+      }
+    },
+    [applyFrame, viewport.height, viewport.width],
+  );
 
   const refreshFrame = useCallback(() => {
     if (activeSessionId) {
@@ -127,16 +147,22 @@ export default function BrowserPanel({ url, browserSessionId, isActive, onBrowse
 
   useEffect(() => {
     if (!isActive || !activeSessionId) return;
-    const timer = window.setInterval(() => {
-      void requestBrowser({ action: 'frame', sessionId: activeSessionId });
-    }, frame?.loading ? 1000 : 4000);
+    const timer = window.setInterval(
+      () => {
+        void requestBrowser({ action: 'frame', sessionId: activeSessionId });
+      },
+      frame?.loading ? 1000 : 4000,
+    );
     return () => window.clearInterval(timer);
   }, [activeSessionId, frame?.loading, isActive, requestBrowser]);
 
-  useEffect(() => () => {
-    if (textTimerRef.current) window.clearTimeout(textTimerRef.current);
-    if (wheelTimerRef.current) window.clearTimeout(wheelTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (textTimerRef.current) window.clearTimeout(textTimerRef.current);
+      if (wheelTimerRef.current) window.clearTimeout(wheelTimerRef.current);
+    },
+    [],
+  );
 
   function navigate(next: string) {
     const normalized = normalizeUrl(next);
@@ -267,7 +293,10 @@ export default function BrowserPanel({ url, browserSessionId, isActive, onBrowse
             onChange={(event) => setDraftUrl(event.target.value)}
             onFocus={(event) => event.currentTarget.select()}
             className="h-7 w-full border bg-transparent px-2 font-mono text-xs outline-none"
-            style={{ borderColor: isActive ? 'var(--accent)' : 'var(--border)', color: 'var(--terminal-fg)' }}
+            style={{
+              borderColor: isActive ? 'var(--accent)' : 'var(--border)',
+              color: 'var(--terminal-fg)',
+            }}
             aria-label="Browser URL"
             spellCheck={false}
           />
@@ -275,7 +304,10 @@ export default function BrowserPanel({ url, browserSessionId, isActive, onBrowse
         <button
           type="button"
           className="h-7 w-7 shrink-0 border text-xs font-mono"
-          style={{ borderColor: 'var(--border)', color: externalUrl(currentUrl) ? 'var(--accent)' : 'var(--muted)' }}
+          style={{
+            borderColor: 'var(--border)',
+            color: externalUrl(currentUrl) ? 'var(--accent)' : 'var(--muted)',
+          }}
           title="Open in new tab"
           onClick={() => {
             const href = externalUrl(currentUrl);
@@ -287,7 +319,10 @@ export default function BrowserPanel({ url, browserSessionId, isActive, onBrowse
       </div>
       <div ref={surfaceRef} className="relative min-h-0 flex-1 overflow-hidden">
         {currentUrl === 'about:blank' ? (
-          <div className="h-full flex items-center justify-center font-mono text-sm" style={{ color: 'var(--muted)' }}>
+          <div
+            className="h-full flex items-center justify-center font-mono text-sm"
+            style={{ color: 'var(--muted)' }}
+          >
             Browser ready
           </div>
         ) : frame ? (
@@ -344,7 +379,10 @@ export default function BrowserPanel({ url, browserSessionId, isActive, onBrowse
             />
           </div>
         ) : (
-          <div className="h-full flex items-center justify-center font-mono text-sm" style={{ color: 'var(--muted)' }}>
+          <div
+            className="h-full flex items-center justify-center font-mono text-sm"
+            style={{ color: 'var(--muted)' }}
+          >
             Starting server browser...
           </div>
         )}

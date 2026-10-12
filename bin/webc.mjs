@@ -114,12 +114,20 @@ try {
   } else if (cmd === 'workspace' && sub === 'delete') {
     const id = rest.join(' ').trim();
     if (!id) throw new Error('workspace id is required');
-    console.log(JSON.stringify(await request('DELETE', `/api/admin/workspaces?id=${encodeURIComponent(id)}`), null, 2));
+    console.log(
+      JSON.stringify(
+        await request('DELETE', `/api/admin/workspaces?id=${encodeURIComponent(id)}`),
+        null,
+        2,
+      ),
+    );
   } else if (cmd === 'browser' && sub === 'panel') {
     const url = browserTarget(rest);
     if (!url) throw new Error('url is required');
     const data = await browserRequest({ action: 'panelOpen', url });
-    console.log(`${data.workspace.id}\t${data.tab.id}\t${data.tab.browserSessionId || ''}\t${data.tab.url}`);
+    console.log(
+      `${data.workspace.id}\t${data.tab.id}\t${data.tab.browserSessionId || ''}\t${data.tab.url}`,
+    );
   } else if (cmd === 'browser' && sub === 'open') {
     const url = browserTarget(rest);
     if (!url) throw new Error('url is required');
@@ -127,7 +135,9 @@ try {
   } else if (cmd === 'browser' && sub === 'snapshot') {
     const target = rest.join(' ').trim();
     if (!target) throw new Error('url or sessionId is required');
-    const body = isUrl(target) ? { action: 'snapshot', url: target } : { action: 'snapshot', sessionId: target };
+    const body = isUrl(target)
+      ? { action: 'snapshot', url: target }
+      : { action: 'snapshot', sessionId: target };
     console.log(JSON.stringify(await browserRequest(body), null, 2));
   } else if (cmd === 'browser' && sub === 'frame') {
     const [target, outPath] = rest;
@@ -142,27 +152,60 @@ try {
       fs.writeFileSync(outPath, Buffer.from(image, 'base64'));
       console.log(outPath);
     } else {
-      console.log(JSON.stringify({ ...data, frame: data.frame ? { ...data.frame, screenshot: { ...data.frame.screenshot, data: '[base64]' } } : undefined }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ...data,
+            frame: data.frame
+              ? { ...data.frame, screenshot: { ...data.frame.screenshot, data: '[base64]' } }
+              : undefined,
+          },
+          null,
+          2,
+        ),
+      );
     }
   } else if (cmd === 'browser' && (sub === 'back' || sub === 'forward' || sub === 'reload')) {
     const sessionId = rest.join(' ').trim();
     if (!sessionId) throw new Error('sessionId is required');
     const data = await browserRequest({ action: sub, sessionId });
-    console.log(JSON.stringify({ ...data, frame: data.frame ? { ...data.frame, screenshot: { ...data.frame.screenshot, data: '[base64]' } } : undefined }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ...data,
+          frame: data.frame
+            ? { ...data.frame, screenshot: { ...data.frame.screenshot, data: '[base64]' } }
+            : undefined,
+        },
+        null,
+        2,
+      ),
+    );
   } else if (cmd === 'browser' && sub === 'click') {
     const [sessionId, ...selectorParts] = rest;
     const selector = selectorParts.join(' ').trim();
     if (!sessionId || !selector) throw new Error('sessionId and selector are required');
-    console.log(JSON.stringify(await browserRequest({ action: 'click', sessionId, selector }), null, 2));
+    console.log(
+      JSON.stringify(await browserRequest({ action: 'click', sessionId, selector }), null, 2),
+    );
   } else if (cmd === 'browser' && sub === 'point-click') {
     const [sessionId, x, y] = rest;
-    if (!sessionId || x === undefined || y === undefined) throw new Error('sessionId, x, and y are required');
-    console.log(JSON.stringify(await browserRequest({ action: 'pointClick', sessionId, x: Number(x), y: Number(y) }), null, 2));
+    if (!sessionId || x === undefined || y === undefined)
+      throw new Error('sessionId, x, and y are required');
+    console.log(
+      JSON.stringify(
+        await browserRequest({ action: 'pointClick', sessionId, x: Number(x), y: Number(y) }),
+        null,
+        2,
+      ),
+    );
   } else if (cmd === 'browser' && sub === 'fill') {
     const [sessionId, selector, ...textParts] = rest;
     const text = textParts.join(' ');
     if (!sessionId || !selector) throw new Error('sessionId, selector, and text are required');
-    console.log(JSON.stringify(await browserRequest({ action: 'fill', sessionId, selector, text }), null, 2));
+    console.log(
+      JSON.stringify(await browserRequest({ action: 'fill', sessionId, selector, text }), null, 2),
+    );
   } else if (cmd === 'browser' && sub === 'type') {
     const [sessionId, ...textParts] = rest;
     const text = textParts.join(' ');
@@ -171,12 +214,30 @@ try {
   } else if (cmd === 'browser' && sub === 'scroll') {
     const [sessionId, deltaY, x = '600', y = '400'] = rest;
     if (!sessionId || deltaY === undefined) throw new Error('sessionId and deltaY are required');
-    console.log(JSON.stringify(await browserRequest({ action: 'scroll', sessionId, deltaY: Number(deltaY), x: Number(x), y: Number(y) }), null, 2));
+    console.log(
+      JSON.stringify(
+        await browserRequest({
+          action: 'scroll',
+          sessionId,
+          deltaY: Number(deltaY),
+          x: Number(x),
+          y: Number(y),
+        }),
+        null,
+        2,
+      ),
+    );
   } else if (cmd === 'browser' && sub === 'eval') {
     const [sessionId, ...expressionParts] = rest;
     const expression = expressionParts.join(' ').trim();
     if (!sessionId || !expression) throw new Error('sessionId and expression are required');
-    console.log(JSON.stringify(await browserRequest({ action: 'eval', sessionId, expression, allowUnsafeEval: true }), null, 2));
+    console.log(
+      JSON.stringify(
+        await browserRequest({ action: 'eval', sessionId, expression, allowUnsafeEval: true }),
+        null,
+        2,
+      ),
+    );
   } else if (cmd === 'browser' && sub === 'screenshot') {
     const [target, outPath] = rest;
     if (!target) throw new Error('url or sessionId is required');
