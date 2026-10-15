@@ -4,3 +4,8 @@ allowBuilds:
   node-pty: true
   sharp: false
   unrs-resolver: false
+
+# Security floor required by the production audit (2026-10-15).
+overrides:
+  'browserslist@<4.28.7': '4.28.7'
+  'source-map-js@<1.2.2': '1.2.2'
