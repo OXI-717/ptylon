@@ -81,3 +81,22 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// A successful, correlated daemon list is authoritative. Timeouts must never be
+// reported as an empty list: retention callers use absence as deletion evidence.
+export async function GET(req: NextRequest) {
+  const denied = verifyAdminRequest(req);
+  if (denied) return denied;
+  try {
+    const response = await sendGatewayRequest({ type: 'list' }, 'sessions');
+    if (!Array.isArray(response.data) || response.data.some(
+      (row: unknown) => !row || typeof row !== 'object'
+        || !('id' in row) || typeof row.id !== 'string' || !row.id.trim(),
+    )) {
+      throw new Error('invalid daemon session list');
+    }
+    return NextResponse.json({ complete: true, session_ids: response.data.map(row => row.id) });
+  } catch {
+    return NextResponse.json({ complete: false, error: 'session snapshot unavailable' }, { status: 503 });
+  }
+}
